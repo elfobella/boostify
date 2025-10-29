@@ -1,0 +1,63 @@
+"use client"
+
+import * as React from "react"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { Menu, X } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { motion, AnimatePresence } from "framer-motion"
+
+const navItems = [
+  { href: "/", label: "Home" },
+  { href: "/about", label: "About" },
+  { href: "/services", label: "Services" },
+  { href: "/contact", label: "Contact" },
+]
+
+export function MobileMenu() {
+  const [isOpen, setIsOpen] = React.useState(false)
+  const pathname = usePathname()
+
+  return (
+    <div className="md:hidden">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-gray-200 bg-white hover:bg-gray-100 dark:border-gray-800 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+        aria-label="Toggle menu"
+      >
+        {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            className="absolute left-0 right-0 top-16 z-50 border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-zinc-950"
+          >
+            <nav className="flex flex-col p-4 space-y-2">
+              {navItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setIsOpen(false)}
+                  className={cn(
+                    "rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-gray-100 dark:hover:bg-zinc-900",
+                    pathname === item.href
+                      ? "bg-gray-100 dark:bg-zinc-900 text-blue-600 dark:text-blue-400"
+                      : "opacity-60 text-gray-900 dark:text-gray-100"
+                  )}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
