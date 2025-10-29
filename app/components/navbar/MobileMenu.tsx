@@ -6,17 +6,19 @@ import { usePathname } from "next/navigation"
 import { Menu, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
+import { useLocaleContext } from "@/contexts"
 
 const navItems = [
-  { href: "/", label: "Home" },
-  { href: "/about", label: "About" },
-  { href: "/services", label: "Services" },
-  { href: "/contact", label: "Contact" },
+  { href: "/", key: "home" },
+  { href: "/about", key: "about" },
+  { href: "/services", key: "services" },
+  { href: "/contact", key: "contact" },
 ]
 
 export function MobileMenu() {
   const [isOpen, setIsOpen] = React.useState(false)
   const pathname = usePathname()
+  const { t } = useLocaleContext()
 
   return (
     <div className="md:hidden">
@@ -50,7 +52,7 @@ export function MobileMenu() {
                       : "opacity-60 text-gray-900 dark:text-gray-100"
                   )}
                 >
-                  {item.label}
+                  {t(`nav.${item.key}`)}
                 </Link>
               ))}
             </nav>

@@ -3,16 +3,18 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
+import { useLocaleContext } from "@/contexts"
 
 const navItems = [
-  { href: "/", label: "Home" },
-  { href: "/about", label: "About" },
-  { href: "/services", label: "Services" },
-  { href: "/contact", label: "Contact" },
+  { href: "/", key: "home" },
+  { href: "/about", key: "about" },
+  { href: "/services", key: "services" },
+  { href: "/contact", key: "contact" },
 ]
 
 export function NavItems() {
   const pathname = usePathname()
+  const { t } = useLocaleContext()
 
   return (
     <nav className="hidden md:flex items-center gap-8">
@@ -27,7 +29,7 @@ export function NavItems() {
               : "opacity-60 hover:text-blue-600 dark:hover:text-blue-400"
           )}
         >
-          {item.label}
+          {t(`nav.${item.key}`)}
         </Link>
       ))}
     </nav>
