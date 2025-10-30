@@ -3,8 +3,8 @@
 import { useState } from "react"
 import { Navbar } from "@/app/components/navbar"
 import { Footer } from "@/app/components/footer"
-import { ServiceCategorySelector, BoostingForm } from "@/app/components/boosting"
-import { ServiceCategory } from "@/lib/pricing"
+import { ServiceCategorySelector, BoostingForm, PaymentSummary } from "@/app/components/boosting"
+import { ServiceCategory, getEstimatedTime } from "@/lib/pricing"
 import Image from "next/image"
 import { useLocaleContext } from "@/contexts"
 
@@ -12,14 +12,35 @@ export default function ClashRoyaleBoostingPage() {
   const { t } = useLocaleContext()
   const [selectedCategory, setSelectedCategory] = useState<ServiceCategory>('trophy-boosting')
   const [calculatedPrice, setCalculatedPrice] = useState(0)
+  const [estimatedTime, setEstimatedTime] = useState("")
+  const [isFormValid, setIsFormValid] = useState(false)
+  const [currentLevel, setCurrentLevel] = useState("")
+  const [targetLevel, setTargetLevel] = useState("")
+
+  const handlePriceChange = (price: number) => {
+    setCalculatedPrice(price)
+    // Calculate time based on current values
+    if (currentLevel && targetLevel) {
+      const current = parseFloat(currentLevel)
+      const target = parseFloat(targetLevel)
+      if (!isNaN(current) && !isNaN(target)) {
+        setEstimatedTime(getEstimatedTime(current, target, selectedCategory))
+      }
+    }
+  }
+
+  const handleProceed = () => {
+    // Handle payment logic here
+    console.log("Proceeding to payment...")
+  }
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Navbar />
+      <Navbar onOpenLoginModal={() => {}} />
       
       <main className="flex-1 mt-16">
         {/* Hero Section */}
-        <section className="relative text-white py-16 overflow-hidden">
+        <section className="relative text-white py-12 md:py-16 overflow-hidden">
           {/* Background Image with Blur */}
           <div className="absolute inset-0">
             <Image
@@ -36,8 +57,8 @@ export default function ClashRoyaleBoostingPage() {
           
           {/* Content */}
           <div className="container px-4 relative z-10">
-            <div className="flex items-center gap-6 mb-8">
-              <div className="relative w-20 h-20 rounded-lg overflow-hidden ring-4 ring-white/30 shadow-lg">
+            <div className="flex items-center gap-4 md:gap-6 mb-6 md:mb-8">
+              <div className="relative w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden ring-2 md:ring-4 ring-white/30 shadow-lg">
                 <Image
                   src="/clash-royale.jpg"
                   alt="Clash Royale"
@@ -46,36 +67,52 @@ export default function ClashRoyaleBoostingPage() {
                 />
               </div>
               <div>
-                <h1 className="text-4xl font-bold mb-2 drop-shadow-lg text-white">{t("clashRoyale.title")}</h1>
-                <p className="text-white/90 drop-shadow-md">{t("clashRoyale.subtitle")}</p>
+                <h1 className="text-2xl md:text-4xl font-bold mb-1 md:mb-2 drop-shadow-lg text-white">{t("clashRoyale.title")}</h1>
+                <p className="text-sm md:text-base text-white/90 drop-shadow-md">{t("clashRoyale.subtitle")}</p>
               </div>
             </div>
           </div>
         </section>
 
         {/* Main Content */}
-        <section className="container px-4 py-12">
-          <div className="max-w-4xl mx-auto space-y-8">
-            {/* Service Categories */}
-            <div className="bg-white dark:bg-zinc-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800">
-              <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100">
-                {t("clashRoyale.selectService")}
-              </h2>
-              <ServiceCategorySelector
-                selectedCategory={selectedCategory}
-                onSelectCategory={setSelectedCategory}
-              />
-            </div>
+        <section className="container px-4 py-8 md:py-12">
+          <div className="max-w-7xl mx-auto">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Left Column - Form */}
+              <div className="lg:col-span-2 space-y-6">
+                {/* Service Categories */}
+                <div className="bg-zinc-900 rounded-xl p-4 md:p-6 border border-gray-800">
+                  <h2 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 text-gray-100">
+                    {t("clashRoyale.selectService")}
+                  </h2>
+                  <ServiceCategorySelector
+                    selectedCategory={selectedCategory}
+                    onSelectCategory={setSelectedCategory}
+                  />
+                </div>
 
-            {/* Form Section */}
-            <div className="bg-white dark:bg-zinc-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800">
-              <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100">
-                {t("clashRoyale.orderDetails")}
-              </h2>
-              <BoostingForm
-                category={selectedCategory}
-                onPriceChange={setCalculatedPrice}
-              />
+                {/* Form Section */}
+                <div className="bg-zinc-900 rounded-xl p-4 md:p-6 border border-gray-800">
+                  <h2 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 text-gray-100">
+                    {t("clashRoyale.orderDetails")}
+                  </h2>
+                  <BoostingForm
+                    category={selectedCategory}
+                    onPriceChange={handlePriceChange}
+                    onFormChange={setIsFormValid}
+                  />
+                </div>
+              </div>
+
+              {/* Right Column - Payment Summary */}
+              <div className="lg:col-span-1">
+                <PaymentSummary
+                  price={calculatedPrice}
+                  estimatedTime={estimatedTime}
+                  isValid={isFormValid}
+                  onProceed={handleProceed}
+                />
+              </div>
             </div>
           </div>
         </section>
@@ -85,4 +122,3 @@ export default function ClashRoyaleBoostingPage() {
     </div>
   )
 }
-

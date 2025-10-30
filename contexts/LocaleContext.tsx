@@ -30,14 +30,48 @@ const translations = {
       title: "Games We Provide Boosting For",
       subtitle: "Rank boosting and progression services for your favorite games",
       clashRoyaleDesc: "Level up your arena, upgrade your cards to legendary. Safe and fast boosting up to Arena 16.",
-      viewPrices: "View Prices"
+      viewPrices: "View Prices",
+      comingSoon: "Coming Soon",
+      codMobileDesc: "Rank boosting services coming soon",
+      pubgMobileDesc: "Boosting services coming soon"
     },
     reliability: {
       title: "Why Boostify?",
-      subtitle: "Secure, fast and guaranteed boosting service with professional players"
+      subtitle: "Secure, fast and guaranteed boosting service with professional players",
+      fastCompletionTitle: "Fast Completion",
+      fastCompletionDesc: "Get your order completed in the shortest time",
+      fastCompletionFeature1: "24/7 Professional boosters",
+      fastCompletionFeature2: "Average 2-6 hour completion",
+      fastCompletionFeature3: "Priority queue for VIP",
+      secureTitle: "Safe & Secure",
+      secureDesc: "Your account security is our top priority",
+      secureFeature1: "No VPN needed",
+      secureFeature2: "Account guarantee",
+      secureFeature3: "SSL encrypted platform",
+      privacyTitle: "Privacy Protected",
+      privacyDesc: "Your personal information is always private",
+      privacyFeature1: "Secure payment methods",
+      privacyFeature2: "GDPR compliant",
+      privacyFeature3: "No account sharing",
+      competitivePricingTitle: "Competitive Pricing",
+      competitivePricingDesc: "Best prices in the market",
+      competitivePricingFeature1: "Transparent pricing",
+      competitivePricingFeature2: "No hidden fees",
+      competitivePricingFeature3: "Money-back guarantee"
     },
     footer: {
       copyright: "All rights reserved"
+    },
+    auth: {
+      signIn: "Sign In",
+      welcomeBack: "Welcome Back!",
+      signInDiscord: "Continue with Discord",
+      signInGoogle: "Continue with Google",
+      signOut: "Sign Out",
+      profile: "Profile",
+      loading: "Connecting...",
+      error: "Authentication failed",
+      terms: "By continuing, you agree to our Terms of Service and Privacy Policy"
     },
     clashRoyale: {
       title: "Clash Royale Boosting",
@@ -86,14 +120,48 @@ const translations = {
       title: "Boosting Hizmeti Sunan Oyunlar",
       subtitle: "Favori oyunlarınızda sıralama yükseltme ve ilerleme hizmetleri",
       clashRoyaleDesc: "Arena seviyenizi yükseltin, kartlarınızı efsaneye çıkarın. Arena 16'ya kadar güvenli ve hızlı boosting.",
-      viewPrices: "Fiyatları Görüntüle"
+      viewPrices: "Fiyatları Görüntüle",
+      comingSoon: "Yakında",
+      codMobileDesc: "Sıralama yükseltme hizmetleri yakında",
+      pubgMobileDesc: "Boosting hizmetleri yakında"
     },
     reliability: {
       title: "Neden Boostify?",
-      subtitle: "Profesyonel oyuncularımızla güvenli, hızlı ve garantili boosting hizmeti"
+      subtitle: "Profesyonel oyuncularımızla güvenli, hızlı ve garantili boosting hizmeti",
+      fastCompletionTitle: "Hızlı Tamamlama",
+      fastCompletionDesc: "Siparişinizin en kısa sürede tamamlanması",
+      fastCompletionFeature1: "7/24 Profesyonel boostlar",
+      fastCompletionFeature2: "Ortalama 2-6 saat tamamlama",
+      fastCompletionFeature3: "VIP için öncelikli kuyruk",
+      secureTitle: "Güvenli",
+      secureDesc: "Hesap güvenliğiniz bizim önceliğimiz",
+      secureFeature1: "VPN gerekmez",
+      secureFeature2: "Hesap garantisi",
+      secureFeature3: "SSL şifreli platform",
+      privacyTitle: "Gizlilik Korunur",
+      privacyDesc: "Kişisel bilgileriniz her zaman özeldir",
+      privacyFeature1: "Güvenli ödeme yöntemleri",
+      privacyFeature2: "GDPR uyumlu",
+      privacyFeature3: "Hesap paylaşımı yok",
+      competitivePricingTitle: "Rekabetçi Fiyatlandırma",
+      competitivePricingDesc: "Piyasadaki en iyi fiyatlar",
+      competitivePricingFeature1: "Şeffaf fiyatlandırma",
+      competitivePricingFeature2: "Gizli ücret yok",
+      competitivePricingFeature3: "Para iade garantisi"
     },
     footer: {
       copyright: "Tüm hakları saklıdır"
+    },
+    auth: {
+      signIn: "Giriş Yap",
+      welcomeBack: "Tekrar Hoş Geldiniz!",
+      signInDiscord: "Discord ile Devam Et",
+      signInGoogle: "Google ile Devam Et",
+      signOut: "Çıkış Yap",
+      profile: "Profil",
+      loading: "Bağlanıyor...",
+      error: "Giriş başarısız",
+      terms: "Devam ederek Hizmet Şartlarımızı ve Gizlilik Politikamızı kabul etmiş olursunuz"
     },
     clashRoyale: {
       title: "Clash Royale Boosting",

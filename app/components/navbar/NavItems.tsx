@@ -23,10 +23,10 @@ export function NavItems() {
           key={item.href}
           href={item.href}
           className={cn(
-            "text-sm font-medium transition-colors hover:opacity-80",
+            "text-base font-medium transition-colors hover:opacity-80",
             pathname === item.href
-              ? "text-blue-600 dark:text-blue-400"
-              : "opacity-60 hover:text-blue-600 dark:hover:text-blue-400"
+              ? "text-blue-400"
+              : "opacity-60 hover:text-blue-400"
           )}
         >
           {t(`nav.${item.key}`)}

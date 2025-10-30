@@ -25,13 +25,13 @@ export function FooterLinks() {
   return (
     <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
       <div>
-        <h3 className="text-sm font-semibold mb-4 text-gray-900 dark:text-gray-100">Company</h3>
+        <h3 className="text-sm font-semibold mb-4 text-gray-100">Company</h3>
         <ul className="space-y-3">
           {footerLinks.company.map((link) => (
             <li key={link.href}>
               <Link
                 href={link.href}
-                className="text-sm opacity-60 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                className="text-sm text-gray-400 opacity-60 hover:text-blue-400 transition-colors"
               >
                 {link.label}
               </Link>
@@ -41,13 +41,13 @@ export function FooterLinks() {
       </div>
 
       <div>
-        <h3 className="text-sm font-semibold mb-4">Support</h3>
+        <h3 className="text-sm font-semibold mb-4 text-gray-100">Support</h3>
         <ul className="space-y-3">
           {footerLinks.support.map((link) => (
             <li key={link.href}>
               <Link
                 href={link.href}
-                className="text-sm opacity-60 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                className="text-sm text-gray-400 opacity-60 hover:text-blue-400 transition-colors"
               >
                 {link.label}
               </Link>
@@ -57,13 +57,13 @@ export function FooterLinks() {
       </div>
 
       <div>
-        <h3 className="text-sm font-semibold mb-4">Legal</h3>
+        <h3 className="text-sm font-semibold mb-4 text-gray-100">Legal</h3>
         <ul className="space-y-3">
           {footerLinks.legal.map((link) => (
             <li key={link.href}>
               <Link
                 href={link.href}
-                className="text-sm opacity-60 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                className="text-sm text-gray-400 opacity-60 hover:text-blue-400 transition-colors"
               >
                 {link.label}
               </Link>
@@ -73,14 +73,14 @@ export function FooterLinks() {
       </div>
 
       <div>
-        <h3 className="text-sm font-semibold mb-4">Follow Us</h3>
+        <h3 className="text-sm font-semibold mb-4 text-gray-100">Follow Us</h3>
         <ul className="space-y-3">
           <li>
             <Link
               href="https://twitter.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              className="text-sm text-gray-400 hover:text-blue-400 transition-colors"
             >
               Twitter
             </Link>
@@ -90,7 +90,7 @@ export function FooterLinks() {
               href="https://github.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              className="text-sm text-gray-400 hover:text-blue-400 transition-colors"
             >
               GitHub
             </Link>
@@ -100,7 +100,7 @@ export function FooterLinks() {
               href="https://linkedin.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              className="text-sm text-gray-400 hover:text-blue-400 transition-colors"
             >
               LinkedIn
             </Link>

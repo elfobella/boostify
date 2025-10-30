@@ -27,7 +27,7 @@ export function GameCard({
   const { t } = useLocaleContext()
   
   const cardContent = (
-    <div className="group relative overflow-hidden rounded-xl bg-white dark:bg-zinc-900 border-2 border-gray-200 dark:border-gray-800 shadow-lg transition-all duration-300 hover:border-blue-500 dark:hover:border-blue-400">
+    <div className="group relative overflow-hidden rounded-xl bg-zinc-900 border-2 border-gray-800 shadow-lg transition-all duration-300 hover:border-blue-400">
       <div className="relative w-full">
         <Image
           src={image}
@@ -43,7 +43,7 @@ export function GameCard({
         {comingSoon && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm">
             <span className="text-white font-bold text-lg px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-lg">
-              Coming Soon
+              {t("games.comingSoon")}
             </span>
           </div>
         )}

@@ -9,42 +9,42 @@ export function ReliabilitySection() {
   const features = [
     {
       icon: Zap,
-      title: "Hızlı Tamamlama",
-      description: "Profesyonel oyuncularımızla sıralama artışınızı hızla tamamlayın. 24-48 saat içinde sonuç.",
+      title: t("reliability.fastCompletionTitle"),
+      description: t("reliability.fastCompletionDesc"),
       featuresList: [
-        "Hızlı teslimat garantisi",
-        "Deneyimli boosterlar",
-        "Anında başlangıç"
+        t("reliability.fastCompletionFeature1"),
+        t("reliability.fastCompletionFeature2"),
+        t("reliability.fastCompletionFeature3")
       ]
     },
     {
       icon: Shield,
-      title: "100% Güvenli",
-      description: "Hesabınız tamamen güvenli. Ban koruması ve geri ödeme garantisi ile sorunsuz deneyim.",
+      title: t("reliability.secureTitle"),
+      description: t("reliability.secureDesc"),
       featuresList: [
-        "Ban koruması",
-        "VPN + Güvenli cihazlar",
-        "7/24 destek"
+        t("reliability.secureFeature1"),
+        t("reliability.secureFeature2"),
+        t("reliability.secureFeature3")
       ]
     },
     {
       icon: Lock,
-      title: "Gizlilik Garantisi",
-      description: "Hesap bilgileriniz tamamen güvende. Ödeme şifreniz asla paylaşılmaz.",
+      title: t("reliability.privacyTitle"),
+      description: t("reliability.privacyDesc"),
       featuresList: [
-        "Güvenli ödeme",
-        "Şifre koruması",
-        "Veri güvenliği"
+        t("reliability.privacyFeature1"),
+        t("reliability.privacyFeature2"),
+        t("reliability.privacyFeature3")
       ]
     },
     {
       icon: Rocket,
-      title: "Rekabetçi Fiyatlar",
-      description: "En iyi fiyat-kalite oranı. Uygun fiyatlarla zirveye ulaşın.",
+      title: t("reliability.competitivePricingTitle"),
+      description: t("reliability.competitivePricingDesc"),
       featuresList: [
-        "Uygun fiyatlandırma",
-        "Toplu sipariş indirimleri",
-        "Garantili sonuç"
+        t("reliability.competitivePricingFeature1"),
+        t("reliability.competitivePricingFeature2"),
+        t("reliability.competitivePricingFeature3")
       ]
     }
   ]
@@ -55,10 +55,10 @@ export function ReliabilitySection() {
       <div className="absolute top-20 right-1/4 w-[300px] h-[300px] bg-gradient-to-br from-blue-400/30 to-cyan-400/30 rounded-full blur-[100px] dark:from-blue-500/20 dark:to-cyan-500/20"></div>
       
       <div className="relative mx-auto max-w-2xl text-center mb-12">
-        <h2 className="text-3xl font-bold tracking-tight sm:text-4xl bg-gradient-to-r from-blue-600 via-cyan-500 to-blue-500 bg-clip-text text-transparent">
+        <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight bg-gradient-to-r from-blue-600 via-cyan-500 to-blue-500 bg-clip-text text-transparent">
           {t("reliability.title")}
         </h2>
-        <p className="mt-4 text-lg opacity-70">
+        <p className="mt-4 text-lg md:text-xl opacity-70">
           {t("reliability.subtitle")}
         </p>
       </div>

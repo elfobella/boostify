@@ -7,6 +7,8 @@ import { Menu, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
 import { useLocaleContext } from "@/contexts"
+import { AuthButton, UserMenu } from "../auth"
+import { useSession } from "next-auth/react"
 
 const navItems = [
   { href: "/", key: "home" },
@@ -15,16 +17,22 @@ const navItems = [
   { href: "/contact", key: "contact" },
 ]
 
-export function MobileMenu() {
+interface MobileMenuProps {
+  onOpenLoginModal: () => void
+}
+
+export function MobileMenu({ onOpenLoginModal }: MobileMenuProps) {
   const [isOpen, setIsOpen] = React.useState(false)
   const pathname = usePathname()
   const { t } = useLocaleContext()
+  const { data: session } = useSession()
+  const isAuthenticated = !!session?.user
 
   return (
     <div className="md:hidden">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-gray-200 bg-white hover:bg-gray-100 dark:border-gray-800 dark:bg-zinc-900 dark:hover:bg-zinc-800"
+        className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-gray-800 bg-zinc-900 hover:bg-zinc-800 text-gray-100"
         aria-label="Toggle menu"
       >
         {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -37,7 +45,7 @@ export function MobileMenu() {
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.2 }}
-            className="absolute left-0 right-0 top-16 z-50 border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-zinc-950"
+            className="absolute left-0 right-0 top-16 z-50 border-b border-gray-800 bg-zinc-950"
           >
             <nav className="flex flex-col p-4 space-y-2">
               {navItems.map((item) => (
@@ -46,15 +54,22 @@ export function MobileMenu() {
                   href={item.href}
                   onClick={() => setIsOpen(false)}
                   className={cn(
-                    "rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-gray-100 dark:hover:bg-zinc-900",
+                    "rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-zinc-900",
                     pathname === item.href
-                      ? "bg-gray-100 dark:bg-zinc-900 text-blue-600 dark:text-blue-400"
-                      : "opacity-60 text-gray-900 dark:text-gray-100"
+                      ? "bg-zinc-900 text-blue-400"
+                      : "opacity-60 text-gray-100"
                   )}
                 >
                   {t(`nav.${item.key}`)}
                 </Link>
               ))}
+              <div className="pt-2 border-t border-gray-800 mt-2">
+                {isAuthenticated ? (
+                  <UserMenu />
+                ) : (
+                  <AuthButton onOpenModal={onOpenLoginModal} />
+                )}
+              </div>
             </nav>
           </motion.div>
         )}

@@ -1,13 +1,17 @@
 "use client"
 
+import * as React from "react"
 import { Navbar } from "@/app/components/navbar"
 import { Footer } from "@/app/components/footer"
 import { PopularGames } from "@/app/components/games"
 import { ReliabilitySection } from "@/app/components/reliability"
+import { LoginModal } from "@/app/components/auth"
 import { useLocaleContext } from "@/contexts"
 
 export default function Home() {
   const { t } = useLocaleContext()
+  const [isLoginModalOpen, setIsLoginModalOpen] = React.useState(false)
+  
   return (
     <div className="flex min-h-screen flex-col relative overflow-hidden">
       {/* Background Pattern with Light Rays */}
@@ -22,28 +26,31 @@ export default function Home() {
         <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-gradient-to-t from-blue-400/20 to-transparent rounded-full blur-3xl dark:from-blue-400/10"></div>
       </div>
       
-      <Navbar />
+      <Navbar onOpenLoginModal={() => setIsLoginModalOpen(true)} />
+      
+      {/* Login Modal */}
+      <LoginModal isOpen={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)} />
       
       <main className="flex-1 relative z-0 mt-16">
         {/* Hero Section */}
         <section className="container px-4 py-24 md:py-32">
           <div className="mx-auto max-w-4xl text-center">
-            <p className="text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-gray-100 mb-6">
+            <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold text-gray-100 mb-6">
               {t("hero.title")}
-            </p>
-            <p className="mt-6 text-lg leading-8 opacity-70 sm:text-xl">
+            </h1>
+            <p className="mt-6 text-lg md:text-xl leading-8 opacity-70">
               {t("hero.subtitle")}
             </p>
             <div className="mt-10 flex items-center justify-center gap-x-6">
               <a
                 href="#games"
-                className="rounded-md bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/50 hover:shadow-blue-500/70 hover:from-blue-700 hover:to-cyan-700 dark:shadow-blue-400/30 transition-all"
+                className="rounded-md bg-gradient-to-r from-blue-600 to-cyan-600 px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-blue-500/50 hover:shadow-blue-500/70 hover:from-blue-700 hover:to-cyan-700 dark:shadow-blue-400/30 transition-all"
               >
                 {t("hero.ctaPrimary")}
               </a>
               <a
                 href="#reliability"
-                className="text-sm font-semibold leading-6 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+                className="text-base font-semibold leading-6 text-blue-400 hover:text-blue-300 transition-colors"
               >
                 {t("hero.ctaSecondary")} <span aria-hidden="true">→</span>
               </a>

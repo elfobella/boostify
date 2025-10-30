@@ -1,0 +1,131 @@
+"use client"
+
+import { useState } from "react"
+import { CheckCircle2, Shield, Clock, CreditCard } from "lucide-react"
+import { useLocaleContext, useCurrency } from "@/contexts"
+import { PaymentModal } from "@/app/components/payment"
+
+interface PaymentSummaryProps {
+  price: number
+  estimatedTime: string
+  isValid: boolean
+  onProceed: () => void
+}
+
+export function PaymentSummary({ price, estimatedTime, isValid, onProceed }: PaymentSummaryProps) {
+  const { convertPrice } = useCurrency()
+  const { t } = useLocaleContext()
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
+
+  const handleProceedClick = () => {
+    if (isValid && price > 0) {
+      setIsPaymentModalOpen(true)
+    }
+  }
+
+  const handlePaymentSuccess = () => {
+    console.log("Payment successful!")
+    onProceed()
+    // Here you can add logic to save the order to database
+  }
+
+  return (
+    <div className="sticky top-20 bg-gradient-to-br from-zinc-900 to-zinc-950 border-2 border-gray-800 rounded-xl p-6 shadow-xl">
+      {/* Header */}
+      <div className="mb-6 pb-4 border-b border-gray-800">
+        <h3 className="text-xl font-bold text-gray-100 mb-2">Order Summary</h3>
+        <p className="text-sm text-gray-400">Review your order details</p>
+      </div>
+
+      {/* Price Display */}
+      <div className="space-y-6">
+        {/* Total Price */}
+        {price > 0 ? (
+          <div className="bg-gradient-to-r from-blue-600/20 to-cyan-600/20 border border-blue-500/30 rounded-lg p-4">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm font-medium text-gray-300">{t("clashRoyale.form.estimatedPrice")}</span>
+              <span className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+                {convertPrice(price)}
+              </span>
+            </div>
+            {estimatedTime && (
+              <div className="flex items-center gap-2 text-sm text-cyan-300">
+                <Clock className="h-4 w-4" />
+                <span>{t("clashRoyale.form.estimatedTime")}: {estimatedTime}</span>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <CreditCard className="h-12 w-12 text-gray-600 mx-auto mb-3" />
+            <p className="text-sm text-gray-500">Fill in the details to see pricing</p>
+          </div>
+        )}
+
+        {/* Features */}
+        <div className="space-y-3">
+          <div className="flex items-start gap-3">
+            <CheckCircle2 className="h-5 w-5 text-green-400 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-gray-200">Fast & Secure</p>
+              <p className="text-xs text-gray-500">Professional boosters handle your account safely</p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <Shield className="h-5 w-5 text-blue-400 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-gray-200">Account Guarantee</p>
+              <p className="text-xs text-gray-500">Your account is fully protected</p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <Clock className="h-5 w-5 text-cyan-400 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-gray-200">24/7 Support</p>
+              <p className="text-xs text-gray-500">Our team is always ready to help</p>
+            </div>
+          </div>
+        </div>
+
+        {/* CTA Button */}
+        <button
+          onClick={handleProceedClick}
+          disabled={!isValid || price === 0}
+          className="w-full px-6 py-4 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 disabled:from-gray-700 disabled:to-gray-700 text-white rounded-lg font-bold text-base transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 disabled:shadow-none"
+        >
+          {!isValid ? (
+            <>
+              <span>Complete Form</span>
+            </>
+          ) : price === 0 ? (
+            <>
+              <span>Enter Details</span>
+            </>
+          ) : (
+            <>
+              <CreditCard className="h-5 w-5" />
+              <span>{t("clashRoyale.form.proceedPayment")}</span>
+            </>
+          )}
+        </button>
+
+        {/* Security Badge */}
+        <div className="flex items-center justify-center gap-2 text-xs text-gray-500 pt-2">
+          <Shield className="h-3 w-3" />
+          <span>Secure payment powered by Stripe</span>
+        </div>
+      </div>
+
+      {/* Payment Modal */}
+      <PaymentModal
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        amount={price}
+        onSuccess={handlePaymentSuccess}
+      />
+    </div>
+  )
+}
+

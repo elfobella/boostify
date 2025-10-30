@@ -7,9 +7,10 @@ import { useCurrency, useLocaleContext } from "@/contexts"
 interface BoostingFormProps {
   category: ServiceCategory
   onPriceChange: (price: number) => void
+  onFormChange: (isValid: boolean) => void
 }
 
-export function BoostingForm({ category, onPriceChange }: BoostingFormProps) {
+export function BoostingForm({ category, onPriceChange, onFormChange }: BoostingFormProps) {
   const { convertPrice } = useCurrency()
   const { t } = useLocaleContext()
   const [gameAccount, setGameAccount] = useState("")
@@ -17,6 +18,12 @@ export function BoostingForm({ category, onPriceChange }: BoostingFormProps) {
   const [targetLevel, setTargetLevel] = useState("")
   const [calculatedPrice, setCalculatedPrice] = useState(0)
   const [estimatedTime, setEstimatedTime] = useState("")
+
+  const isValid = !!gameAccount && !!currentLevel && !!targetLevel
+
+  useEffect(() => {
+    onFormChange(isValid)
+  }, [isValid, onFormChange])
 
   useEffect(() => {
     if (currentLevel && targetLevel) {
@@ -161,28 +168,6 @@ export function BoostingForm({ category, onPriceChange }: BoostingFormProps) {
         {getCategoryFields()}
       </div>
 
-      {/* Price & Time Preview */}
-      {calculatedPrice > 0 && (
-        <div className="bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950 dark:to-cyan-950 border border-blue-200 dark:border-blue-800 rounded-lg p-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">{t("clashRoyale.form.estimatedPrice")}</p>
-              <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                {convertPrice(calculatedPrice)}
-              </p>
-              <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
-                {t("clashRoyale.form.estimatedTime")}: {estimatedTime}
-              </p>
-            </div>
-            <button
-              disabled={!gameAccount || !currentLevel || !targetLevel}
-              className="px-8 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-            >
-              {t("clashRoyale.form.proceedPayment")}
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
