@@ -109,32 +109,73 @@ export async function getOrCreateUser(userData: {
     }
 
     // User doesn't exist, create new user
-    console.log('[Supabase] Creating new user:', userData.email)
+    console.log('[Supabase] Creating new user:', {
+      email: userData.email,
+      provider: userData.provider,
+      hasName: !!userData.name,
+      hasImage: !!userData.image,
+      providerId: userData.providerId,
+    })
+    
+    const insertData = {
+      email: userData.email,
+      name: userData.name || null,
+      image: userData.image || null,
+      provider: userData.provider,
+      provider_id: userData.providerId || null,
+      last_login: new Date().toISOString(),
+    }
+    
+    console.log('[Supabase] Insert data:', insertData)
+    
     const { data: newUser, error: createError } = await supabaseAdmin
       .from('users')
-      .insert({
-        email: userData.email,
-        name: userData.name,
-        image: userData.image,
-        provider: userData.provider,
-        provider_id: userData.providerId,
-        last_login: new Date().toISOString(),
-      })
+      .insert(insertData)
       .select()
       .single()
 
     if (createError) {
-      console.error('[Supabase] Error creating user:', {
-        error: createError,
+      console.error('[Supabase] ❌ Error creating user:', {
         message: createError.message,
         details: createError.details,
         hint: createError.hint,
         code: createError.code,
+        insertData,
       })
+      
+      // Check for specific error types
+      if (createError.code === '23505') { // Unique violation
+        console.error('[Supabase] Email already exists (unique constraint violation)')
+        // Try to fetch the existing user
+        const { data: existingUser } = await supabaseAdmin
+          .from('users')
+          .select('*')
+          .eq('email', userData.email)
+          .single()
+        
+        if (existingUser) {
+          console.log('[Supabase] Found existing user, updating:', existingUser.id)
+          return existingUser
+        }
+      }
+      
+      if (createError.code === '42501') { // Insufficient privilege
+        console.error('[Supabase] RLS Policy error - service role may not have permission')
+      }
+      
       return null
     }
 
-    console.log('[Supabase] User created successfully:', newUser.id)
+    if (!newUser) {
+      console.error('[Supabase] ❌ Insert succeeded but no user data returned')
+      return null
+    }
+
+    console.log('[Supabase] ✅ User created successfully:', {
+      id: newUser.id,
+      email: newUser.email,
+      provider: newUser.provider,
+    })
     return newUser
   } catch (error) {
     console.error('[Supabase] Exception in getOrCreateUser:', error)
