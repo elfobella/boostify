@@ -29,11 +29,18 @@ export async function getOrCreateUser(userData: {
   providerId?: string
 }) {
   if (!supabaseAdmin) {
-    console.error('Supabase admin client not initialized')
+    console.error('[Supabase] Admin client not initialized. Check environment variables.')
+    return null
+  }
+
+  if (!userData.email) {
+    console.error('[Supabase] Cannot create user: email is required')
     return null
   }
 
   try {
+    console.log('[Supabase] Getting or creating user:', { email: userData.email, provider: userData.provider })
+    
     // First, check if user exists by email
     const { data: existingUser, error: checkError } = await supabaseAdmin
       .from('users')
@@ -42,27 +49,31 @@ export async function getOrCreateUser(userData: {
       .single()
 
     if (existingUser && !checkError) {
-      // User exists, update last_login
+      console.log('[Supabase] User exists, updating last_login:', existingUser.id)
+      // User exists, update last_login and optionally update name/image
       const { data: updatedUser, error: updateError } = await supabaseAdmin
         .from('users')
         .update({
           last_login: new Date().toISOString(),
           name: userData.name || existingUser.name,
           image: userData.image || existingUser.image,
+          provider_id: userData.providerId || existingUser.provider_id,
         })
         .eq('id', existingUser.id)
         .select()
         .single()
 
       if (updateError) {
-        console.error('Error updating user:', updateError)
+        console.error('[Supabase] Error updating user:', updateError)
         return existingUser
       }
 
+      console.log('[Supabase] User updated successfully:', updatedUser.id)
       return updatedUser
     }
 
     // User doesn't exist, create new user
+    console.log('[Supabase] Creating new user:', userData.email)
     const { data: newUser, error: createError } = await supabaseAdmin
       .from('users')
       .insert({
@@ -77,13 +88,20 @@ export async function getOrCreateUser(userData: {
       .single()
 
     if (createError) {
-      console.error('Error creating user:', createError)
+      console.error('[Supabase] Error creating user:', {
+        error: createError,
+        message: createError.message,
+        details: createError.details,
+        hint: createError.hint,
+        code: createError.code,
+      })
       return null
     }
 
+    console.log('[Supabase] User created successfully:', newUser.id)
     return newUser
   } catch (error) {
-    console.error('Error in getOrCreateUser:', error)
+    console.error('[Supabase] Exception in getOrCreateUser:', error)
     return null
   }
 }
