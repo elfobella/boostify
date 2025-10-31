@@ -1,5 +1,77 @@
 # Supabase Entegrasyonu Sorun Giderme
 
+## Email/Password Kayıt Production'da Çalışmıyor
+
+### Olası Nedenler ve Çözümler
+
+### 1. Supabase Service Role Key Kontrolü
+**En yaygın sorun:** `SUPABASE_SERVICE_ROLE_KEY` environment variable'ı eksik veya yanlış.
+
+**Kontrol:**
+- Vercel Dashboard → Settings → Environment Variables
+- `SUPABASE_SERVICE_ROLE_KEY`'in tanımlı olduğundan emin olun
+- Key'in doğru olduğunu doğrulayın (Supabase Dashboard → Settings → API)
+
+**Test:**
+Vercel Function Logs'da şu mesajı arayın:
+- `[Supabase] Admin client not initialized` → Service role key eksik
+
+### 2. Supabase Auth Email Ayarları
+Supabase Dashboard → Authentication → Settings'de kontrol edin:
+- Email confirmation: Eğer açıksa, `email_confirm: true` kullanıyoruz ama yine de kontrol edin
+- Email template: Custom template'ler sorun çıkarabilir
+
+### 3. RLS (Row Level Security) Politikaları
+`users` tablosunda RLS aktif ama service role key ile çalışıyoruz, bu normalde sorun olmamalı. Yine de kontrol edin:
+- Supabase Dashboard → Table Editor → users → Policies
+- Service role için full access policy olmalı
+
+### 4. Log Kontrolü
+Production'da kayıt yaparken Vercel Function Logs'da şunları kontrol edin:
+
+**Başarılı kayıt log'ları:**
+```
+[Register API] Received registration request
+[Register API] Calling createUserWithPassword
+[Supabase] Creating auth user with password
+[Supabase] Auth user created successfully
+[Supabase] Creating user record in users table
+[Supabase] User record created successfully
+[Register API] User created successfully
+```
+
+**Hata durumları:**
+- `[Supabase] Admin client not initialized` → Environment variable eksik
+- `[Supabase] Error creating auth user` → Auth API sorunu
+- `[Supabase] Error creating user record` → Tablo/RLS sorunu
+
+### 5. Manuel Test
+
+**Supabase Dashboard'da:**
+```sql
+-- Son kayıtları kontrol edin
+SELECT * FROM users 
+WHERE provider = 'email'
+ORDER BY created_at DESC 
+LIMIT 10;
+
+-- Auth users kontrol edin (Supabase Dashboard → Authentication → Users)
+```
+
+### 6. Yaygın Sorunlar
+
+**Sorun:** "Failed to create user"
+- **Olası neden:** Email zaten Supabase Auth'da kayıtlı ama users tablosunda yok
+- **Çözüm:** Supabase Dashboard → Authentication → Users'dan kontrol edin
+
+**Sorun:** "Server configuration error"
+- **Olası neden:** SUPABASE_SERVICE_ROLE_KEY eksik
+- **Çözüm:** Vercel environment variables'a ekleyin
+
+**Sorun:** Auth user oluşuyor ama users tablosuna eklenmiyor
+- **Olası neden:** RLS policy veya tablo constraint sorunu
+- **Çözüm:** SQL schema'yı tekrar çalıştırın
+
 ## Google OAuth ile Giriş Yapıldığında Supabase'e Kayıt Olmuyor
 
 ### Olası Nedenler ve Çözümler

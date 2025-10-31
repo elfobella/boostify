@@ -6,8 +6,11 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { email, name, password } = body
 
+    console.log('[Register API] Received registration request:', { email, hasName: !!name, hasPassword: !!password })
+
     // Validate input
     if (!email || !name || !password) {
+      console.error('[Register API] Missing required fields')
       return NextResponse.json(
         { error: "Email, name, and password are required" },
         { status: 400 }
@@ -15,13 +18,40 @@ export async function POST(request: Request) {
     }
 
     if (password.length < 6) {
+      console.error('[Register API] Password too short')
       return NextResponse.json(
         { error: "Password must be at least 6 characters" },
         { status: 400 }
       )
     }
 
+    // Check if Supabase is configured
+    const { supabaseAdmin } = await import("@/lib/supabase")
+    if (!supabaseAdmin) {
+      console.error('[Register API] Supabase admin client not initialized')
+      return NextResponse.json(
+        { error: "Server configuration error. Please contact support." },
+        { status: 500 }
+      )
+    }
+
+    // Check if email already exists in our users table (more efficient than listing all auth users)
+    const { data: existingUser } = await supabaseAdmin
+      .from('users')
+      .select('email')
+      .eq('email', email)
+      .single()
+    
+    if (existingUser) {
+      console.error('[Register API] Email already registered in users table:', email)
+      return NextResponse.json(
+        { error: "Email is already registered. Please sign in instead." },
+        { status: 409 }
+      )
+    }
+
     // Create user in Supabase
+    console.log('[Register API] Calling createUserWithPassword')
     const user = await createUserWithPassword({
       email,
       name,
@@ -29,20 +59,22 @@ export async function POST(request: Request) {
     })
 
     if (!user) {
+      console.error('[Register API] Failed to create user')
       return NextResponse.json(
-        { error: "Failed to create user. Email might already be registered." },
+        { error: "Failed to create user. The email might already be registered or there was a server error." },
         { status: 500 }
       )
     }
 
+    console.log('[Register API] User created successfully:', user.id)
     return NextResponse.json(
       { message: "User created successfully", userId: user.id },
       { status: 201 }
     )
   } catch (error) {
-    console.error("Registration error:", error)
+    console.error("[Register API] Exception:", error)
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: error instanceof Error ? error.message : "Internal server error" },
       { status: 500 }
     )
   }

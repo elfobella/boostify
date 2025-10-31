@@ -113,11 +113,18 @@ export async function createUserWithPassword(userData: {
   password: string
 }) {
   if (!supabaseAdmin) {
-    console.error('Supabase admin client not initialized')
+    console.error('[Supabase] Admin client not initialized. Check SUPABASE_SERVICE_ROLE_KEY environment variable.')
+    return null
+  }
+
+  if (!userData.email || !userData.password) {
+    console.error('[Supabase] Email and password are required')
     return null
   }
 
   try {
+    console.log('[Supabase] Creating auth user with password:', { email: userData.email })
+    
     // Use Supabase Auth to create user with password
     // This will automatically handle password hashing
     const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -130,11 +137,31 @@ export async function createUserWithPassword(userData: {
     })
 
     if (authError) {
-      console.error('Error creating auth user:', authError)
+      console.error('[Supabase] Error creating auth user:', {
+        message: authError.message,
+        status: authError.status,
+        name: authError.name,
+      })
+      
+      // Check if it's a duplicate email error
+      if (authError.message?.toLowerCase().includes('already registered') || 
+          authError.message?.toLowerCase().includes('already exists') ||
+          authError.message?.toLowerCase().includes('user already')) {
+        console.error('[Supabase] Email already exists in Supabase Auth')
+      }
+      
       return null
     }
 
+    if (!authUser?.user) {
+      console.error('[Supabase] Auth user created but user object is missing')
+      return null
+    }
+
+    console.log('[Supabase] Auth user created successfully:', authUser.user.id)
+
     // Now create user record in our users table
+    console.log('[Supabase] Creating user record in users table')
     const { data: newUser, error: createError } = await supabaseAdmin
       .from('users')
       .insert({
@@ -148,13 +175,29 @@ export async function createUserWithPassword(userData: {
       .single()
 
     if (createError) {
-      console.error('Error creating user record:', createError)
+      console.error('[Supabase] Error creating user record:', {
+        message: createError.message,
+        details: createError.details,
+        hint: createError.hint,
+        code: createError.code,
+      })
+      
+      // If user record creation fails, try to delete the auth user to keep consistency
+      // (optional - might want to keep auth user and retry later)
+      try {
+        await supabaseAdmin.auth.admin.deleteUser(authUser.user.id)
+        console.log('[Supabase] Cleaned up auth user due to user record creation failure')
+      } catch (deleteError) {
+        console.error('[Supabase] Error cleaning up auth user:', deleteError)
+      }
+      
       return null
     }
 
+    console.log('[Supabase] User record created successfully:', newUser.id)
     return newUser
   } catch (error) {
-    console.error('Error in createUserWithPassword:', error)
+    console.error('[Supabase] Exception in createUserWithPassword:', error)
     return null
   }
 }
