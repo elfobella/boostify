@@ -6,9 +6,10 @@ import { LocaleCurrencySelector } from "../locale"
 import { AuthButton, UserMenu } from "../auth"
 import { useSession } from "next-auth/react"
 import { useLoginModal } from "@/contexts"
+import { AvatarSkeleton, Skeleton } from "@/app/components/ui"
 
 export function Navbar() {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const isAuthenticated = !!session?.user
   const { openModal } = useLoginModal()
 
@@ -26,7 +27,12 @@ export function Navbar() {
 
         <div className="flex items-center gap-1 md:gap-2">
           <LocaleCurrencySelector />
-          {isAuthenticated ? (
+          {status === "loading" ? (
+            <div className="flex items-center gap-2">
+              <AvatarSkeleton size={24} />
+              <Skeleton className="h-9 w-24 hidden md:block" />
+            </div>
+          ) : isAuthenticated ? (
             <UserMenu />
           ) : (
             <AuthButton onOpenModal={openModal} />

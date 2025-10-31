@@ -8,6 +8,7 @@ import { User, Mail, Calendar, Shield, Settings, Package, CreditCard, LogOut } f
 import Image from "next/image"
 import { useLocaleContext } from "@/contexts"
 import { signOut } from "next-auth/react"
+import { ProfileSkeleton } from "@/app/components/ui"
 
 function ProfileContent() {
   const { data: session, status } = useSession()
@@ -15,9 +16,11 @@ function ProfileContent() {
 
   if (status === "loading") {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
+      <>
+        <Navbar />
+        <ProfileSkeleton />
+        <Footer />
+      </>
     )
   }
 
@@ -199,9 +202,11 @@ function ProfileContent() {
 export default function ProfilePage() {
   return (
     <Suspense fallback={
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
+      <>
+        <Navbar />
+        <ProfileSkeleton />
+        <Footer />
+      </>
     }>
       <ProfileContent />
     </Suspense>

@@ -4,6 +4,7 @@ import { useState } from "react"
 import { CheckCircle2, Shield, Clock, CreditCard } from "lucide-react"
 import { useLocaleContext, useCurrency } from "@/contexts"
 import { PaymentModal } from "@/app/components/payment"
+import { CardSkeleton } from "@/app/components/ui"
 
 interface PaymentSummaryProps {
   price: number
@@ -48,10 +49,15 @@ export function PaymentSummary({ price, estimatedTime, isValid, onProceed }: Pay
                 {convertPrice(price)}
               </span>
             </div>
-            {estimatedTime && (
+            {estimatedTime ? (
               <div className="flex items-center gap-2 text-sm text-cyan-300">
                 <Clock className="h-4 w-4" />
                 <span>{t("clashRoyale.form.estimatedTime")}: {estimatedTime}</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 mt-2">
+                <div className="h-4 w-4 rounded bg-gray-700/50 animate-pulse" />
+                <div className="h-4 w-32 rounded bg-gray-700/50 animate-pulse" />
               </div>
             )}
           </div>
