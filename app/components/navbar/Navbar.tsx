@@ -2,7 +2,6 @@
 
 import Link from "next/link"
 import { NavItems } from "./NavItems"
-import { MobileMenu } from "./MobileMenu"
 import { LocaleCurrencySelector } from "../locale"
 import { AuthButton, UserMenu } from "../auth"
 import { useSession } from "next-auth/react"
@@ -30,19 +29,9 @@ export function Navbar({ onOpenLoginModal }: NavbarProps) {
         <div className="flex items-center gap-1 md:gap-2">
           <LocaleCurrencySelector />
           {isAuthenticated ? (
-            <>
-              <div className="hidden md:block">
-                <UserMenu />
-              </div>
-              <MobileMenu onOpenLoginModal={onOpenLoginModal} />
-            </>
+            <UserMenu />
           ) : (
-            <>
-              <div className="hidden md:block">
-                <AuthButton onOpenModal={onOpenLoginModal} />
-              </div>
-              <MobileMenu onOpenLoginModal={onOpenLoginModal} />
-            </>
+            <AuthButton onOpenModal={onOpenLoginModal} />
           )}
         </div>
       </div>

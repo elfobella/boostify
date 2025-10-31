@@ -5,11 +5,13 @@ import { User, LogOut, Settings } from "lucide-react"
 import { useSession, signOut } from "next-auth/react"
 import { useLocaleContext } from "@/contexts"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
 
 export function UserMenu() {
   const { data: session } = useSession()
   const { t } = useLocaleContext()
   const [isOpen, setIsOpen] = React.useState(false)
+  const router = useRouter()
 
   if (!session?.user) {
     return null
@@ -87,7 +89,7 @@ export function UserMenu() {
             <div className="py-2">
               <button
                 onClick={() => {
-                  // Navigate to profile
+                  router.push("/profile")
                   setIsOpen(false)
                 }}
                 className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:bg-zinc-800 transition-colors"
@@ -98,7 +100,6 @@ export function UserMenu() {
 
               <button
                 onClick={() => {
-                  // Navigate to settings
                   setIsOpen(false)
                 }}
                 className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:bg-zinc-800 transition-colors"
