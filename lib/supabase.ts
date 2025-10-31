@@ -185,11 +185,34 @@ export async function createUserWithPassword(userData: {
       // Check for invalid API key error
       if (authError.message?.toLowerCase().includes('invalid api key') || 
           authError.message?.toLowerCase().includes('api key') ||
-          authError.status === 401) {
+          authError.message?.toLowerCase().includes('invalid') ||
+          authError.status === 401 ||
+          authError.status === 403) {
         console.error('[Supabase] Invalid API key detected - check SUPABASE_SERVICE_ROLE_KEY')
         console.error('[Supabase] Service key length:', supabaseServiceKey.length)
-        console.error('[Supabase] Service key starts with:', supabaseServiceKey.substring(0, 10))
-        return { success: false, error: 'Server configuration error. Invalid API key. Please contact support.' }
+        console.error('[Supabase] Service key starts with:', supabaseServiceKey.substring(0, 20))
+        console.error('[Supabase] Service key ends with:', supabaseServiceKey.substring(Math.max(0, supabaseServiceKey.length - 20)))
+        
+        // Check if key looks truncated
+        if (supabaseServiceKey.length < 200) {
+          console.error('[Supabase] WARNING: Service key seems too short! Should be 250+ characters')
+        }
+        
+        // Try to decode JWT to verify
+        try {
+          const parts = supabaseServiceKey.split('.')
+          if (parts.length === 3) {
+            const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString())
+            console.error('[Supabase] Key role:', payload.role)
+            if (payload.role !== 'service_role') {
+              console.error('[Supabase] ERROR: Key role is not "service_role"! Found:', payload.role)
+            }
+          }
+        } catch (e) {
+          console.error('[Supabase] Could not decode JWT - key format might be invalid')
+        }
+        
+        return { success: false, error: 'Server configuration error. Invalid API key. Please check Vercel environment variables.' }
       }
       
       // Check if it's a duplicate email error

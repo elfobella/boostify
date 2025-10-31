@@ -36,7 +36,7 @@ export default function RootLayout({
           <CurrencyProvider>
             <LocaleProvider>
               <LoginModalProvider>
-                {children}
+              {children}
                 <GlobalLoginModal />
               </LoginModalProvider>
             </LocaleProvider>
