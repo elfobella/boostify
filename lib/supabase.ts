@@ -152,6 +152,33 @@ export async function createUserWithPassword(userData: {
   if (!supabaseAdmin) {
     const errorMsg = 'Supabase admin client not initialized. Check SUPABASE_SERVICE_ROLE_KEY environment variable.'
     console.error('[Supabase]', errorMsg)
+    
+    // Detailed diagnostics
+    const envServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+    const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+    
+    console.error('[Supabase] Diagnostic Info:')
+    console.error('[Supabase] - SUPABASE_SERVICE_ROLE_KEY exists:', !!envServiceKey)
+    console.error('[Supabase] - SUPABASE_SERVICE_ROLE_KEY length:', envServiceKey.length)
+    console.error('[Supabase] - NEXT_PUBLIC_SUPABASE_URL exists:', !!envUrl)
+    console.error('[Supabase] - NEXT_PUBLIC_SUPABASE_URL:', envUrl)
+    
+    if (envServiceKey) {
+      console.error('[Supabase] - Key starts with:', envServiceKey.substring(0, 20))
+      console.error('[Supabase] - Key ends with:', envServiceKey.substring(Math.max(0, envServiceKey.length - 20)))
+      
+      // Check for common issues
+      if (envServiceKey.trim() !== envServiceKey) {
+        console.error('[Supabase] - WARNING: Key has leading/trailing whitespace!')
+      }
+      if (envServiceKey.length < 200) {
+        console.error('[Supabase] - WARNING: Key seems too short (should be 250+ chars)')
+      }
+      if (!envServiceKey.startsWith('eyJ')) {
+        console.error('[Supabase] - WARNING: Key does not start with "eyJ" (not a valid JWT)')
+      }
+    }
+    
     return { success: false, error: 'Server configuration error. Please contact support.' }
   }
 
