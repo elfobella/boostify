@@ -4,20 +4,56 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 
+// Validate environment variables
+if (process.env.NODE_ENV !== 'production' || process.env.VERCEL) {
+  // Only log in development or on Vercel
+  if (!supabaseUrl) {
+    console.warn('[Supabase] NEXT_PUBLIC_SUPABASE_URL is missing')
+  } else if (!supabaseUrl.startsWith('https://') || !supabaseUrl.includes('.supabase.co')) {
+    console.warn('[Supabase] NEXT_PUBLIC_SUPABASE_URL format looks incorrect:', supabaseUrl.substring(0, 30) + '...')
+  }
+
+  if (!supabaseAnonKey) {
+    console.warn('[Supabase] NEXT_PUBLIC_SUPABASE_ANON_KEY is missing')
+  } else if (supabaseAnonKey.length < 50) {
+    console.warn('[Supabase] NEXT_PUBLIC_SUPABASE_ANON_KEY seems too short (might be truncated)')
+  }
+
+  if (!supabaseServiceKey) {
+    console.warn('[Supabase] SUPABASE_SERVICE_ROLE_KEY is missing - email registration will not work')
+  } else if (supabaseServiceKey.length < 100) {
+    console.warn('[Supabase] SUPABASE_SERVICE_ROLE_KEY seems too short (might be truncated)')
+  }
+}
+
 // Client-side Supabase client (for browser)
 // Only create if URL and key are provided (for build-time safety)
 export const supabase = (supabaseUrl && supabaseAnonKey)
-  ? createClient(supabaseUrl, supabaseAnonKey)
+  ? (() => {
+      try {
+        return createClient(supabaseUrl, supabaseAnonKey)
+      } catch (error) {
+        console.error('[Supabase] Failed to create client-side client:', error)
+        return null
+      }
+    })()
   : null
 
 // Server-side Supabase client (for API routes, with service role key for admin operations)
 export const supabaseAdmin: SupabaseClient | null = (supabaseUrl && supabaseServiceKey)
-  ? createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
+  ? (() => {
+      try {
+        return createClient(supabaseUrl, supabaseServiceKey, {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          }
+        })
+      } catch (error) {
+        console.error('[Supabase] Failed to create admin client:', error)
+        return null
       }
-    })
+    })()
   : null
 
 // Helper function to get or create user in Supabase
@@ -145,6 +181,16 @@ export async function createUserWithPassword(userData: {
         status: authError.status,
         name: authError.name,
       })
+      
+      // Check for invalid API key error
+      if (authError.message?.toLowerCase().includes('invalid api key') || 
+          authError.message?.toLowerCase().includes('api key') ||
+          authError.status === 401) {
+        console.error('[Supabase] Invalid API key detected - check SUPABASE_SERVICE_ROLE_KEY')
+        console.error('[Supabase] Service key length:', supabaseServiceKey.length)
+        console.error('[Supabase] Service key starts with:', supabaseServiceKey.substring(0, 10))
+        return { success: false, error: 'Server configuration error. Invalid API key. Please contact support.' }
+      }
       
       // Check if it's a duplicate email error
       const isDuplicateEmail = authError.message?.toLowerCase().includes('already registered') || 

@@ -29,6 +29,20 @@ export async function POST(request: Request) {
     const { supabaseAdmin } = await import("@/lib/supabase")
     if (!supabaseAdmin) {
       console.error('[Register API] Supabase admin client not initialized')
+      
+      // Check which environment variables are missing
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+      const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+      
+      if (!supabaseUrl) {
+        console.error('[Register API] NEXT_PUBLIC_SUPABASE_URL is missing')
+      }
+      if (!supabaseServiceKey) {
+        console.error('[Register API] SUPABASE_SERVICE_ROLE_KEY is missing')
+      } else if (supabaseServiceKey.length < 100) {
+        console.error('[Register API] SUPABASE_SERVICE_ROLE_KEY seems too short (might be truncated):', supabaseServiceKey.length, 'chars')
+      }
+      
       return NextResponse.json(
         { error: "Server configuration error. Please contact support." },
         { status: 500 }
