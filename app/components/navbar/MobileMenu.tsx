@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation"
 import { Menu, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
-import { useLocaleContext } from "@/contexts"
+import { useLocaleContext, useLoginModal } from "@/contexts"
 import { AuthButton, UserMenu } from "../auth"
 import { useSession } from "next-auth/react"
 
@@ -17,15 +17,12 @@ const navItems = [
   { href: "/contact", key: "contact" },
 ]
 
-interface MobileMenuProps {
-  onOpenLoginModal: () => void
-}
-
-export function MobileMenu({ onOpenLoginModal }: MobileMenuProps) {
+export function MobileMenu() {
   const [isOpen, setIsOpen] = React.useState(false)
   const pathname = usePathname()
   const { t } = useLocaleContext()
   const { data: session } = useSession()
+  const { openModal } = useLoginModal()
   const isAuthenticated = !!session?.user
 
   return (
@@ -67,7 +64,7 @@ export function MobileMenu({ onOpenLoginModal }: MobileMenuProps) {
                 {isAuthenticated ? (
                   <UserMenu />
                 ) : (
-                  <AuthButton onOpenModal={onOpenLoginModal} />
+                  <AuthButton onOpenModal={openModal} />
                 )}
               </div>
             </nav>

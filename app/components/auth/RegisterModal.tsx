@@ -2,46 +2,31 @@
 
 import * as React from "react"
 import { X } from "lucide-react"
-import { signIn } from "next-auth/react"
 import { useLocaleContext } from "@/contexts"
 
-interface LoginModalProps {
+interface RegisterModalProps {
   isOpen: boolean
   onClose: () => void
-  onSwitchToRegister?: () => void
+  onSwitchToLogin: () => void
 }
 
-export function LoginModal({ isOpen, onClose, onSwitchToRegister }: LoginModalProps) {
+export function RegisterModal({ isOpen, onClose, onSwitchToLogin }: RegisterModalProps) {
   const { t } = useLocaleContext()
   const [isLoading, setIsLoading] = React.useState(false)
   const [formData, setFormData] = React.useState({
+    name: "",
     email: "",
     password: "",
+    confirmPassword: "",
   })
   const [errors, setErrors] = React.useState<Record<string, string>>({})
-  
-  const handleDiscordLogin = async () => {
-    setIsLoading(true)
-    try {
-      await signIn("discord", { callbackUrl: "/" })
-    } catch (error) {
-      console.error("Discord login error:", error)
-      setIsLoading(false)
-    }
-  }
-  
-  const handleGoogleLogin = async () => {
-    setIsLoading(true)
-    try {
-      await signIn("google", { callbackUrl: "/" })
-    } catch (error) {
-      console.error("Google login error:", error)
-      setIsLoading(false)
-    }
-  }
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
+
+    if (!formData.name.trim()) {
+      newErrors.name = t("auth.nameRequired")
+    }
 
     if (!formData.email.trim()) {
       newErrors.email = t("auth.emailRequired")
@@ -51,13 +36,19 @@ export function LoginModal({ isOpen, onClose, onSwitchToRegister }: LoginModalPr
 
     if (!formData.password) {
       newErrors.password = t("auth.passwordRequired")
+    } else if (formData.password.length < 6) {
+      newErrors.password = t("auth.passwordTooShort")
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = t("auth.passwordsDoNotMatch")
     }
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
 
-  const handleEmailLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
     if (!validateForm()) {
@@ -66,23 +57,30 @@ export function LoginModal({ isOpen, onClose, onSwitchToRegister }: LoginModalPr
 
     setIsLoading(true)
     try {
-      // TODO: Implement actual email/password login with NextAuth credentials provider
-      // For now, this is a placeholder
-      const result = await signIn("credentials", {
-        email: formData.email,
-        password: formData.password,
-        redirect: false,
+      // Create user in Supabase
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          name: formData.name,
+          password: formData.password,
+        }),
       })
 
-      if (result?.error) {
-        setErrors({ submit: t("auth.error") })
-      } else {
-        onClose()
-        window.location.href = "/"
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || t("auth.error"))
       }
+
+      // After successful registration, switch to login
+      onSwitchToLogin()
     } catch (error) {
-      console.error("Email login error:", error)
-      setErrors({ submit: t("auth.error") })
+      console.error("Registration error:", error)
+      setErrors({ submit: error instanceof Error ? error.message : t("auth.error") })
     } finally {
       setIsLoading(false)
     }
@@ -126,12 +124,31 @@ export function LoginModal({ isOpen, onClose, onSwitchToRegister }: LoginModalPr
                 Boostify
               </h2>
               <p className="text-gray-400 text-base">
-                {t("auth.welcomeBack")}
+                {t("auth.welcome")}
               </p>
             </div>
 
-            {/* Email Login Form */}
-            <form onSubmit={handleEmailLogin} className="space-y-3">
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="space-y-3">
+              {/* Name */}
+              <div>
+                <label htmlFor="name" className="block text-xs font-medium text-gray-300 mb-1.5">
+                  {t("auth.name")}
+                </label>
+                <input
+                  type="text"
+                  id="name"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 text-sm bg-zinc-800 border border-gray-700 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  placeholder={t("auth.name")}
+                />
+                {errors.name && (
+                  <p className="mt-1 text-sm text-red-400">{errors.name}</p>
+                )}
+              </div>
+
               {/* Email */}
               <div>
                 <label htmlFor="email" className="block text-xs font-medium text-gray-300 mb-1.5">
@@ -170,14 +187,23 @@ export function LoginModal({ isOpen, onClose, onSwitchToRegister }: LoginModalPr
                 )}
               </div>
 
-              {/* Forgot Password */}
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
-                >
-                  {t("auth.forgotPassword")}
-                </button>
+              {/* Confirm Password */}
+              <div>
+                <label htmlFor="confirmPassword" className="block text-xs font-medium text-gray-300 mb-1.5">
+                  {t("auth.confirmPassword")}
+                </label>
+                <input
+                  type="password"
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 text-sm bg-zinc-800 border border-gray-700 rounded-lg text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  placeholder="••••••••"
+                />
+                {errors.confirmPassword && (
+                  <p className="mt-1 text-sm text-red-400">{errors.confirmPassword}</p>
+                )}
               </div>
 
               {errors.submit && (
@@ -190,7 +216,7 @@ export function LoginModal({ isOpen, onClose, onSwitchToRegister }: LoginModalPr
                 disabled={isLoading}
                 className="w-full px-5 py-2.5 text-sm bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-all duration-200 hover:scale-[1.02] hover:shadow-lg hover:shadow-blue-500/30"
               >
-                {isLoading ? t("auth.loading") : t("auth.signIn")}
+                {isLoading ? t("auth.loading") : t("auth.createAccount")}
               </button>
             </form>
 
@@ -208,7 +234,16 @@ export function LoginModal({ isOpen, onClose, onSwitchToRegister }: LoginModalPr
             <div className="flex items-center justify-center gap-3">
               {/* Discord Icon */}
               <button
-                onClick={handleDiscordLogin}
+                onClick={async () => {
+                  setIsLoading(true)
+                  try {
+                    const { signIn } = await import("next-auth/react")
+                    await signIn("discord", { callbackUrl: "/" })
+                  } catch (error) {
+                    console.error("Discord login error:", error)
+                    setIsLoading(false)
+                  }
+                }}
                 disabled={isLoading}
                 className="p-2.5 bg-[#5865F2] hover:bg-[#4752C4] disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-all duration-200 hover:scale-110 hover:shadow-lg hover:shadow-[#5865F2]/30"
                 title={t("auth.signInDiscord")}
@@ -220,7 +255,16 @@ export function LoginModal({ isOpen, onClose, onSwitchToRegister }: LoginModalPr
 
               {/* Google Icon */}
               <button
-                onClick={handleGoogleLogin}
+                onClick={async () => {
+                  setIsLoading(true)
+                  try {
+                    const { signIn } = await import("next-auth/react")
+                    await signIn("google", { callbackUrl: "/" })
+                  } catch (error) {
+                    console.error("Google login error:", error)
+                    setIsLoading(false)
+                  }
+                }}
                 disabled={isLoading}
                 className="p-2.5 bg-white hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-all duration-200 hover:scale-110 hover:shadow-lg"
                 title={t("auth.signInGoogle")}
@@ -234,20 +278,18 @@ export function LoginModal({ isOpen, onClose, onSwitchToRegister }: LoginModalPr
               </button>
             </div>
 
-            {/* Switch to Register */}
-            {onSwitchToRegister && (
-              <div className="text-center">
-                <p className="text-xs text-gray-400">
-                  {t("auth.dontHaveAccount")}{" "}
-                  <button
-                    onClick={onSwitchToRegister}
-                    className="text-blue-400 hover:text-blue-300 font-semibold transition-colors"
-                  >
-                    {t("auth.signUp")}
-                  </button>
-                </p>
-              </div>
-            )}
+            {/* Switch to Login */}
+            <div className="text-center">
+              <p className="text-xs text-gray-400">
+                {t("auth.haveAccount")}{" "}
+                <button
+                  onClick={onSwitchToLogin}
+                  className="text-blue-400 hover:text-blue-300 font-semibold transition-colors"
+                >
+                  {t("auth.signIn")}
+                </button>
+              </p>
+            </div>
 
             {/* Footer */}
             <p className="text-xs text-center text-gray-500">

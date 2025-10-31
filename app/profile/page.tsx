@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, Suspense } from "react"
+import { Suspense } from "react"
 import { useSession } from "next-auth/react"
 import { Navbar } from "@/app/components/navbar"
 import { Footer } from "@/app/components/footer"
@@ -12,7 +12,6 @@ import { signOut } from "next-auth/react"
 function ProfileContent() {
   const { data: session, status } = useSession()
   const { t } = useLocaleContext()
-  const [loginModalOpen, setLoginModalOpen] = useState(false)
 
   if (status === "loading") {
     return (
@@ -25,11 +24,11 @@ function ProfileContent() {
   if (!session?.user) {
     return (
       <div className="flex min-h-screen flex-col">
-        <Navbar onOpenLoginModal={() => setLoginModalOpen(true)} />
+        <Navbar />
         <main className="flex-1 flex items-center justify-center py-24">
           <div className="text-center">
-            <h1 className="text-4xl font-bold text-gray-100 mb-4">Please Sign In</h1>
-            <p className="text-gray-400 mb-8">You need to be logged in to view your profile.</p>
+            <h1 className="text-4xl font-bold text-gray-100 mb-4">{t("profile.pleaseSignIn")}</h1>
+            <p className="text-gray-400 mb-8">{t("profile.signInDescription")}</p>
           </div>
         </main>
         <Footer />
@@ -49,7 +48,7 @@ function ProfileContent() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Navbar onOpenLoginModal={() => {}} />
+      <Navbar />
       
       <main className="flex-1 mt-16 py-12 md:py-24">
         <div className="container px-4">
@@ -77,20 +76,20 @@ function ProfileContent() {
 
                 {/* User Info */}
                 <div className="flex-1">
-                  <h1 className="text-3xl md:text-4xl font-bold text-gray-100 mb-2">
-                    {session.user.name || "User"}
+                  <h1 className="text-3xl md:text-4xl font-bold text-gray-100 mb-2 line-clamp-2">
+                    {session.user.name || t("profile.user")}
                   </h1>
-                  <p className="text-gray-400 text-lg mb-4">
+                  <p className="text-gray-400 text-lg mb-4 line-clamp-1">
                     {session.user.email}
                   </p>
                   <div className="flex flex-wrap gap-4">
                     <div className="flex items-center gap-2 text-sm text-gray-400">
                       <Calendar className="h-4 w-4" />
-                      <span>Member since 2024</span>
+                      <span>{t("profile.memberSince")}</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-green-400">
                       <Shield className="h-4 w-4" />
-                      <span>Verified Account</span>
+                      <span>{t("profile.verifiedAccount")}</span>
                     </div>
                   </div>
                 </div>
@@ -113,7 +112,7 @@ function ProfileContent() {
                   <Package className="h-8 w-8 text-blue-400" />
                   <span className="text-3xl font-bold text-blue-400">0</span>
                 </div>
-                <h3 className="text-gray-400 text-sm font-medium">Total Orders</h3>
+                <h3 className="text-gray-400 text-sm font-medium">{t("profile.totalOrders")}</h3>
               </div>
 
               <div className="bg-gradient-to-br from-cyan-950/50 to-emerald-950/50 border border-cyan-500/20 rounded-xl p-6">
@@ -121,7 +120,7 @@ function ProfileContent() {
                   <CreditCard className="h-8 w-8 text-cyan-400" />
                   <span className="text-3xl font-bold text-cyan-400">$0</span>
                 </div>
-                <h3 className="text-gray-400 text-sm font-medium">Total Spent</h3>
+                <h3 className="text-gray-400 text-sm font-medium">{t("profile.totalSpent")}</h3>
               </div>
 
               <div className="bg-gradient-to-br from-emerald-950/50 to-blue-950/50 border border-emerald-500/20 rounded-xl p-6">
@@ -129,7 +128,7 @@ function ProfileContent() {
                   <Shield className="h-8 w-8 text-emerald-400" />
                   <span className="text-3xl font-bold text-emerald-400">0</span>
                 </div>
-                <h3 className="text-gray-400 text-sm font-medium">Active Services</h3>
+                <h3 className="text-gray-400 text-sm font-medium">{t("profile.activeServices")}</h3>
               </div>
             </div>
 
@@ -137,7 +136,7 @@ function ProfileContent() {
             <div className="bg-gradient-to-br from-zinc-900 to-zinc-950 border-2 border-gray-800 rounded-2xl p-8 md:p-12 shadow-xl mb-8">
               <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-800">
                 <Settings className="h-6 w-6 text-blue-400" />
-                <h2 className="text-2xl font-bold text-gray-100">Account Details</h2>
+                <h2 className="text-2xl font-bold text-gray-100">{t("profile.accountDetails")}</h2>
               </div>
 
               <div className="space-y-6">
@@ -145,9 +144,9 @@ function ProfileContent() {
                   <div className="p-3 bg-blue-500/20 rounded-lg">
                     <User className="h-5 w-5 text-blue-400" />
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm text-gray-400 mb-1">Full Name</p>
-                    <p className="text-gray-100 font-medium">{session.user.name || "Not set"}</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-gray-400 mb-1">{t("profile.fullName")}</p>
+                    <p className="text-gray-100 font-medium line-clamp-2">{session.user.name || t("profile.notSet")}</p>
                   </div>
                 </div>
 
@@ -155,9 +154,9 @@ function ProfileContent() {
                   <div className="p-3 bg-cyan-500/20 rounded-lg">
                     <Mail className="h-5 w-5 text-cyan-400" />
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm text-gray-400 mb-1">Email Address</p>
-                    <p className="text-gray-100 font-medium">{session.user.email || "Not set"}</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-gray-400 mb-1">{t("profile.emailAddress")}</p>
+                    <p className="text-gray-100 font-medium line-clamp-1">{session.user.email || t("profile.notSet")}</p>
                   </div>
                 </div>
 
@@ -165,9 +164,9 @@ function ProfileContent() {
                   <div className="p-3 bg-emerald-500/20 rounded-lg">
                     <Shield className="h-5 w-5 text-emerald-400" />
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm text-gray-400 mb-1">Account Status</p>
-                    <p className="text-emerald-400 font-medium">Verified</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-gray-400 mb-1">{t("profile.accountStatus")}</p>
+                    <p className="text-emerald-400 font-medium line-clamp-1">{t("profile.verified")}</p>
                   </div>
                 </div>
               </div>
@@ -178,14 +177,14 @@ function ProfileContent() {
               <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-800">
                 <div className="flex items-center gap-3">
                   <Package className="h-6 w-6 text-blue-400" />
-                  <h2 className="text-2xl font-bold text-gray-100">Recent Orders</h2>
+                  <h2 className="text-2xl font-bold text-gray-100">{t("profile.recentOrders")}</h2>
                 </div>
               </div>
 
               <div className="text-center py-12">
                 <Package className="h-16 w-16 text-gray-700 mx-auto mb-4" />
-                <p className="text-gray-500 mb-2">No orders yet</p>
-                <p className="text-sm text-gray-600">Your boosting orders will appear here</p>
+                <p className="text-gray-500 mb-2">{t("profile.noOrdersYet")}</p>
+                <p className="text-sm text-gray-600">{t("profile.ordersDescription")}</p>
               </div>
             </div>
           </div>
@@ -198,8 +197,6 @@ function ProfileContent() {
 }
 
 export default function ProfilePage() {
-  const [loginModalOpen, setLoginModalOpen] = useState(false)
-
   return (
     <Suspense fallback={
       <div className="flex items-center justify-center min-h-screen">

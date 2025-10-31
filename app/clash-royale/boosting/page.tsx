@@ -36,7 +36,7 @@ export default function ClashRoyaleBoostingPage() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Navbar onOpenLoginModal={() => {}} />
+      <Navbar />
       
       <main className="flex-1 mt-16">
         {/* Hero Section */}

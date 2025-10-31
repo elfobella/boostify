@@ -23,7 +23,7 @@ function PaymentSuccessContent() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Navbar onOpenLoginModal={() => {}} />
+      <Navbar />
       
       <main className="flex-1 mt-16 py-12 md:py-24">
         <div className="container px-4">

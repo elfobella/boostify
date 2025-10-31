@@ -64,14 +64,32 @@ const translations = {
     },
     auth: {
       signIn: "Sign In",
+      signUp: "Sign Up",
       welcomeBack: "Welcome Back!",
+      welcome: "Welcome!",
       signInDiscord: "Continue with Discord",
       signInGoogle: "Continue with Google",
       signOut: "Sign Out",
       profile: "Profile",
       loading: "Connecting...",
       error: "Authentication failed",
-      terms: "By continuing, you agree to our Terms of Service and Privacy Policy"
+      terms: "By continuing, you agree to our Terms of Service and Privacy Policy",
+      email: "Email",
+      password: "Password",
+      confirmPassword: "Confirm Password",
+      name: "Name",
+      signInWithEmail: "Sign In with Email",
+      signUpWithEmail: "Sign Up with Email",
+      dontHaveAccount: "Don't have an account?",
+      haveAccount: "Already have an account?",
+      createAccount: "Create Account",
+      orContinueWith: "Or continue with",
+      forgotPassword: "Forgot Password?",
+      emailRequired: "Email is required",
+      passwordRequired: "Password is required",
+      passwordTooShort: "Password must be at least 6 characters",
+      passwordsDoNotMatch: "Passwords do not match",
+      nameRequired: "Name is required"
     },
     clashRoyale: {
       title: "Clash Royale Boosting",
@@ -101,6 +119,25 @@ const translations = {
         estimatedTime: "Estimated time",
         proceedPayment: "Proceed to Payment"
       }
+    },
+    profile: {
+      pleaseSignIn: "Please Sign In",
+      signInDescription: "You need to be logged in to view your profile.",
+      user: "User",
+      notSet: "Not set",
+      memberSince: "Member since 2024",
+      verifiedAccount: "Verified Account",
+      totalOrders: "Total Orders",
+      totalSpent: "Total Spent",
+      activeServices: "Active Services",
+      accountDetails: "Account Details",
+      fullName: "Full Name",
+      emailAddress: "Email Address",
+      accountStatus: "Account Status",
+      verified: "Verified",
+      recentOrders: "Recent Orders",
+      noOrdersYet: "No orders yet",
+      ordersDescription: "Your boosting orders will appear here"
     }
   },
   tr: {
@@ -154,14 +191,32 @@ const translations = {
     },
     auth: {
       signIn: "Giriş Yap",
+      signUp: "Kayıt Ol",
       welcomeBack: "Tekrar Hoş Geldiniz!",
+      welcome: "Hoş Geldiniz!",
       signInDiscord: "Discord ile Devam Et",
       signInGoogle: "Google ile Devam Et",
       signOut: "Çıkış Yap",
       profile: "Profil",
       loading: "Bağlanıyor...",
       error: "Giriş başarısız",
-      terms: "Devam ederek Hizmet Şartlarımızı ve Gizlilik Politikamızı kabul etmiş olursunuz"
+      terms: "Devam ederek Hizmet Şartlarımızı ve Gizlilik Politikamızı kabul etmiş olursunuz",
+      email: "E-posta",
+      password: "Şifre",
+      confirmPassword: "Şifre Tekrar",
+      name: "Ad",
+      signInWithEmail: "E-posta ile Giriş Yap",
+      signUpWithEmail: "E-posta ile Kayıt Ol",
+      dontHaveAccount: "Hesabınız yok mu?",
+      haveAccount: "Zaten hesabınız var mı?",
+      createAccount: "Hesap Oluştur",
+      orContinueWith: "Veya şununla devam edin",
+      forgotPassword: "Şifrenizi mi unuttunuz?",
+      emailRequired: "E-posta gereklidir",
+      passwordRequired: "Şifre gereklidir",
+      passwordTooShort: "Şifre en az 6 karakter olmalıdır",
+      passwordsDoNotMatch: "Şifreler eşleşmiyor",
+      nameRequired: "Ad gereklidir"
     },
     clashRoyale: {
       title: "Clash Royale Boosting",
@@ -191,6 +246,25 @@ const translations = {
         estimatedTime: "Tahmini süre",
         proceedPayment: "Ödemeye Geç"
       }
+    },
+    profile: {
+      pleaseSignIn: "Lütfen Giriş Yapın",
+      signInDescription: "Profilinizi görüntülemek için giriş yapmanız gerekiyor.",
+      user: "Kullanıcı",
+      notSet: "Ayarlanmamış",
+      memberSince: "2024'ten beri üye",
+      verifiedAccount: "Doğrulanmış Hesap",
+      totalOrders: "Toplam Sipariş",
+      totalSpent: "Toplam Harcama",
+      activeServices: "Aktif Hizmetler",
+      accountDetails: "Hesap Detayları",
+      fullName: "Ad Soyad",
+      emailAddress: "E-posta Adresi",
+      accountStatus: "Hesap Durumu",
+      verified: "Doğrulandı",
+      recentOrders: "Son Siparişler",
+      noOrdersYet: "Henüz sipariş yok",
+      ordersDescription: "Boosting siparişleriniz burada görünecek"
     }
   }
 }

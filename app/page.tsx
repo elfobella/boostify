@@ -5,12 +5,10 @@ import { Navbar } from "@/app/components/navbar"
 import { Footer } from "@/app/components/footer"
 import { PopularGames } from "@/app/components/games"
 import { ReliabilitySection } from "@/app/components/reliability"
-import { LoginModal } from "@/app/components/auth"
 import { useLocaleContext } from "@/contexts"
 
 export default function Home() {
   const { t } = useLocaleContext()
-  const [isLoginModalOpen, setIsLoginModalOpen] = React.useState(false)
   
   return (
     <div className="flex min-h-screen flex-col relative overflow-hidden">
@@ -26,10 +24,7 @@ export default function Home() {
         <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-gradient-to-t from-blue-400/20 to-transparent rounded-full blur-3xl dark:from-blue-400/10"></div>
       </div>
       
-      <Navbar onOpenLoginModal={() => setIsLoginModalOpen(true)} />
-      
-      {/* Login Modal */}
-      <LoginModal isOpen={isLoginModalOpen} onClose={() => setIsLoginModalOpen(false)} />
+      <Navbar />
       
       <main className="flex-1 relative z-0 mt-16">
         {/* Hero Section */}

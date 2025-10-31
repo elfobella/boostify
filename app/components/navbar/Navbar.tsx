@@ -5,14 +5,12 @@ import { NavItems } from "./NavItems"
 import { LocaleCurrencySelector } from "../locale"
 import { AuthButton, UserMenu } from "../auth"
 import { useSession } from "next-auth/react"
+import { useLoginModal } from "@/contexts"
 
-interface NavbarProps {
-  onOpenLoginModal: () => void
-}
-
-export function Navbar({ onOpenLoginModal }: NavbarProps) {
+export function Navbar() {
   const { data: session } = useSession()
   const isAuthenticated = !!session?.user
+  const { openModal } = useLoginModal()
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 w-full border-b border-gray-800 bg-zinc-950/95 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/60">
@@ -31,7 +29,7 @@ export function Navbar({ onOpenLoginModal }: NavbarProps) {
           {isAuthenticated ? (
             <UserMenu />
           ) : (
-            <AuthButton onOpenModal={onOpenLoginModal} />
+            <AuthButton onOpenModal={openModal} />
           )}
         </div>
       </div>

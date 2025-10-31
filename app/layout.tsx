@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { CurrencyProvider, LocaleProvider } from "@/contexts";
+import { CurrencyProvider, LocaleProvider, LoginModalProvider } from "@/contexts";
 import { SessionProvider } from "@/app/components/auth/SessionProvider";
+import { GlobalLoginModal } from "@/app/components/auth/GlobalLoginModal";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -34,7 +35,10 @@ export default function RootLayout({
         <SessionProvider>
           <CurrencyProvider>
             <LocaleProvider>
-              {children}
+              <LoginModalProvider>
+                {children}
+                <GlobalLoginModal />
+              </LoginModalProvider>
             </LocaleProvider>
           </CurrencyProvider>
         </SessionProvider>
