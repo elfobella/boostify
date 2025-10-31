@@ -43,8 +43,10 @@ CREATE POLICY "Users can view own data" ON users
   USING (auth.uid()::text = id::text);
 
 -- Policy: Service role can do everything (for backend operations)
+-- This allows our API routes to insert/update/delete users
 CREATE POLICY "Service role full access" ON users
   FOR ALL
-  USING (auth.role() = 'service_role');
+  USING (auth.role() = 'service_role')
+  WITH CHECK (auth.role() = 'service_role');
 
 
