@@ -73,7 +73,9 @@ export function RegisterModal({ isOpen, onClose, onSwitchToLogin }: RegisterModa
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || t("auth.error"))
+        // Show the specific error message from the server
+        const errorMessage = data.error || t("auth.error")
+        throw new Error(errorMessage)
       }
 
       // After successful registration, switch to login

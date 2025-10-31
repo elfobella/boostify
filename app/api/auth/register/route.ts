@@ -52,23 +52,39 @@ export async function POST(request: Request) {
 
     // Create user in Supabase
     console.log('[Register API] Calling createUserWithPassword')
-    const user = await createUserWithPassword({
+    const result = await createUserWithPassword({
       email,
       name,
       password,
     })
 
-    if (!user) {
-      console.error('[Register API] Failed to create user')
+    if (!result.success) {
+      console.error('[Register API] Failed to create user:', result.error)
+      
+      // Return appropriate status code based on error
+      const statusCode = result.error?.includes('already registered') || result.error?.includes('already exists') 
+        ? 409 
+        : result.error?.includes('configuration') 
+        ? 500 
+        : 400
+      
       return NextResponse.json(
-        { error: "Failed to create user. The email might already be registered or there was a server error." },
+        { error: result.error || "Failed to create user. Please try again." },
+        { status: statusCode }
+      )
+    }
+
+    if (!result.user) {
+      console.error('[Register API] User creation returned success but no user object')
+      return NextResponse.json(
+        { error: "User creation completed but data was not returned. Please try signing in." },
         { status: 500 }
       )
     }
 
-    console.log('[Register API] User created successfully:', user.id)
+    console.log('[Register API] User created successfully:', result.user.id)
     return NextResponse.json(
-      { message: "User created successfully", userId: user.id },
+      { message: "User created successfully", userId: result.user.id },
       { status: 201 }
     )
   } catch (error) {

@@ -107,19 +107,22 @@ export async function getOrCreateUser(userData: {
 }
 
 // Helper function to create user with password (for email/password registration)
+// Returns { success: boolean, user?: User, error?: string }
 export async function createUserWithPassword(userData: {
   email: string
   name: string
   password: string
-}) {
+}): Promise<{ success: boolean; user?: any; error?: string }> {
   if (!supabaseAdmin) {
-    console.error('[Supabase] Admin client not initialized. Check SUPABASE_SERVICE_ROLE_KEY environment variable.')
-    return null
+    const errorMsg = 'Supabase admin client not initialized. Check SUPABASE_SERVICE_ROLE_KEY environment variable.'
+    console.error('[Supabase]', errorMsg)
+    return { success: false, error: 'Server configuration error. Please contact support.' }
   }
 
   if (!userData.email || !userData.password) {
-    console.error('[Supabase] Email and password are required')
-    return null
+    const errorMsg = 'Email and password are required'
+    console.error('[Supabase]', errorMsg)
+    return { success: false, error: errorMsg }
   }
 
   try {
@@ -144,18 +147,24 @@ export async function createUserWithPassword(userData: {
       })
       
       // Check if it's a duplicate email error
-      if (authError.message?.toLowerCase().includes('already registered') || 
+      const isDuplicateEmail = authError.message?.toLowerCase().includes('already registered') || 
           authError.message?.toLowerCase().includes('already exists') ||
-          authError.message?.toLowerCase().includes('user already')) {
+          authError.message?.toLowerCase().includes('user already') ||
+          authError.message?.toLowerCase().includes('email address') ||
+          authError.status === 422 // Supabase often returns 422 for duplicate emails
+      
+      if (isDuplicateEmail) {
         console.error('[Supabase] Email already exists in Supabase Auth')
+        return { success: false, error: 'This email is already registered. Please sign in instead.' }
       }
       
-      return null
+      return { success: false, error: authError.message || 'Failed to create user account. Please try again.' }
     }
 
     if (!authUser?.user) {
-      console.error('[Supabase] Auth user created but user object is missing')
-      return null
+      const errorMsg = 'Auth user created but user object is missing'
+      console.error('[Supabase]', errorMsg)
+      return { success: false, error: 'Failed to create user. Please try again.' }
     }
 
     console.log('[Supabase] Auth user created successfully:', authUser.user.id)
@@ -183,7 +192,6 @@ export async function createUserWithPassword(userData: {
       })
       
       // If user record creation fails, try to delete the auth user to keep consistency
-      // (optional - might want to keep auth user and retry later)
       try {
         await supabaseAdmin.auth.admin.deleteUser(authUser.user.id)
         console.log('[Supabase] Cleaned up auth user due to user record creation failure')
@@ -191,14 +199,23 @@ export async function createUserWithPassword(userData: {
         console.error('[Supabase] Error cleaning up auth user:', deleteError)
       }
       
-      return null
+      // Provide specific error message based on error code
+      if (createError.code === '23505') { // Unique violation
+        return { success: false, error: 'This email is already registered. Please sign in instead.' }
+      }
+      
+      return { 
+        success: false, 
+        error: createError.message || 'Failed to save user data. Please contact support if this persists.' 
+      }
     }
 
     console.log('[Supabase] User record created successfully:', newUser.id)
-    return newUser
+    return { success: true, user: newUser }
   } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error occurred'
     console.error('[Supabase] Exception in createUserWithPassword:', error)
-    return null
+    return { success: false, error: `Registration failed: ${errorMsg}` }
   }
 }
 
