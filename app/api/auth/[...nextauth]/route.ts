@@ -36,7 +36,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         // Get user data from our users table
         const { supabaseAdmin } = await import("@/lib/supabase")
-        if (!supabaseAdmin) return null
+        if (!supabaseAdmin) {
+          // Fallback if Supabase is not configured
+          return {
+            id: user.id,
+            email: user.email || credentials.email as string,
+            name: user.user_metadata?.name || null,
+            image: user.user_metadata?.avatar_url || null,
+          }
+        }
 
         const { data: userData } = await supabaseAdmin
           .from('users')
