@@ -12,12 +12,35 @@ function PaymentSuccessContent() {
   const searchParams = useSearchParams()
   const { t } = useLocaleContext()
   const [paymentId, setPaymentId] = useState<string | null>(null)
+  const [orderSaved, setOrderSaved] = useState(false)
 
   useEffect(() => {
     // Get payment intent ID from URL if available
     const id = searchParams.get('payment_intent')
     if (id) {
       setPaymentId(id)
+      
+      // Save order to database if not already saved
+      // (StripeCheckout should have already saved it, but this is a backup)
+      fetch('/api/orders/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          paymentIntentId: id,
+        }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.orderId) {
+            console.log('Order saved on success page:', data.orderId)
+            setOrderSaved(true)
+          }
+        })
+        .catch((error) => {
+          console.error('Error saving order on success page:', error)
+        })
     }
   }, [searchParams])
 

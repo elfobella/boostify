@@ -7,14 +7,24 @@ import { stripePromise } from "@/lib/stripe"
 import { StripeCheckout } from "./StripeCheckout"
 import { PaymentModalSkeleton } from "@/app/components/ui"
 
+interface OrderData {
+  game: string
+  category: string
+  gameAccount: string
+  currentLevel: string
+  targetLevel: string
+}
+
 interface PaymentModalProps {
   isOpen: boolean
   onClose: () => void
   amount: number
   onSuccess: () => void
+  orderData?: OrderData
+  estimatedTime?: string
 }
 
-export function PaymentModal({ isOpen, onClose, amount, onSuccess }: PaymentModalProps) {
+export function PaymentModal({ isOpen, onClose, amount, onSuccess, orderData, estimatedTime }: PaymentModalProps) {
   const [clientSecret, setClientSecret] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
@@ -35,6 +45,8 @@ export function PaymentModal({ isOpen, onClose, amount, onSuccess }: PaymentModa
         body: JSON.stringify({
           amount: amount,
           currency: 'usd',
+          orderData: orderData,
+          estimatedTime: estimatedTime,
         }),
       })
 
@@ -106,6 +118,7 @@ export function PaymentModal({ isOpen, onClose, amount, onSuccess }: PaymentModa
                 clientSecret={clientSecret}
                 onSuccess={handleSuccess}
                 onCancel={onClose}
+                paymentIntentId={clientSecret ? clientSecret.split('_secret_')[0] : null}
               />
             </Elements>
           ) : (

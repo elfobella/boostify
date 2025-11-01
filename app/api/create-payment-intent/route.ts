@@ -13,13 +13,26 @@ const stripe = new Stripe(stripeSecretKey, {
 
 export async function POST(req: NextRequest) {
   try {
-    const { amount, currency = 'usd' } = await req.json()
+    const { amount, currency = 'usd', orderData, estimatedTime } = await req.json()
 
     if (!amount || amount <= 0) {
       return NextResponse.json(
         { error: 'Invalid amount' },
         { status: 400 }
       )
+    }
+
+    // Prepare metadata for the payment intent
+    const metadata: Record<string, string> = {}
+    if (orderData) {
+      metadata.game = orderData.game || 'clash-royale'
+      metadata.service_category = orderData.category || ''
+      metadata.game_account = orderData.gameAccount || ''
+      metadata.current_level = orderData.currentLevel || ''
+      metadata.target_level = orderData.targetLevel || ''
+    }
+    if (estimatedTime) {
+      metadata.estimated_time = estimatedTime
     }
 
     // Create PaymentIntent
@@ -29,6 +42,7 @@ export async function POST(req: NextRequest) {
       automatic_payment_methods: {
         enabled: true,
       },
+      metadata: metadata,
     })
 
     console.log('💰 Payment Intent created:', {

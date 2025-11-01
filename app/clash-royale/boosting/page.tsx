@@ -16,6 +16,7 @@ export default function ClashRoyaleBoostingPage() {
   const [isFormValid, setIsFormValid] = useState(false)
   const [currentLevel, setCurrentLevel] = useState("")
   const [targetLevel, setTargetLevel] = useState("")
+  const [gameAccount, setGameAccount] = useState("")
 
   const handlePriceChange = (price: number) => {
     setCalculatedPrice(price)
@@ -100,6 +101,11 @@ export default function ClashRoyaleBoostingPage() {
                     category={selectedCategory}
                     onPriceChange={handlePriceChange}
                     onFormChange={setIsFormValid}
+                    onFormDataChange={(data) => {
+                      setGameAccount(data.gameAccount)
+                      setCurrentLevel(data.currentLevel)
+                      setTargetLevel(data.targetLevel)
+                    }}
                   />
                 </div>
               </div>
@@ -111,6 +117,13 @@ export default function ClashRoyaleBoostingPage() {
                   estimatedTime={estimatedTime}
                   isValid={isFormValid}
                   onProceed={handleProceed}
+                  orderData={{
+                    game: 'clash-royale',
+                    category: selectedCategory,
+                    gameAccount,
+                    currentLevel,
+                    targetLevel,
+                  }}
                 />
               </div>
             </div>

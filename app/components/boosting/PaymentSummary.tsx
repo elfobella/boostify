@@ -6,14 +6,23 @@ import { useLocaleContext, useCurrency } from "@/contexts"
 import { PaymentModal } from "@/app/components/payment"
 import { CardSkeleton } from "@/app/components/ui"
 
+interface OrderData {
+  game: string
+  category: string
+  gameAccount: string
+  currentLevel: string
+  targetLevel: string
+}
+
 interface PaymentSummaryProps {
   price: number
   estimatedTime: string
   isValid: boolean
   onProceed: () => void
+  orderData?: OrderData
 }
 
-export function PaymentSummary({ price, estimatedTime, isValid, onProceed }: PaymentSummaryProps) {
+export function PaymentSummary({ price, estimatedTime, isValid, onProceed, orderData }: PaymentSummaryProps) {
   const { convertPrice } = useCurrency()
   const { t } = useLocaleContext()
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
@@ -130,6 +139,8 @@ export function PaymentSummary({ price, estimatedTime, isValid, onProceed }: Pay
         onClose={() => setIsPaymentModalOpen(false)}
         amount={price}
         onSuccess={handlePaymentSuccess}
+        orderData={orderData}
+        estimatedTime={estimatedTime}
       />
     </div>
   )

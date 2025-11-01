@@ -12,9 +12,10 @@ interface StripeCheckoutProps {
   clientSecret: string
   onSuccess: () => void
   onCancel: () => void
+  paymentIntentId?: string | null
 }
 
-export function StripeCheckout({ clientSecret, onSuccess, onCancel }: StripeCheckoutProps) {
+export function StripeCheckout({ clientSecret, onSuccess, onCancel, paymentIntentId }: StripeCheckoutProps) {
   const stripe = useStripe()
   const elements = useElements()
   const [isLoading, setIsLoading] = useState(false)
@@ -48,6 +49,29 @@ export function StripeCheckout({ clientSecret, onSuccess, onCancel }: StripeChec
         currency: paymentIntent.currency,
         status: paymentIntent.status
       })
+      
+      // Save order to database
+      try {
+        const orderResponse = await fetch('/api/orders/create', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            paymentIntentId: paymentIntent.id,
+          }),
+        })
+
+        if (orderResponse.ok) {
+          const orderData = await orderResponse.json()
+          console.log('✅ Order saved to database:', orderData.orderId)
+        } else {
+          console.error('Failed to save order:', await orderResponse.text())
+        }
+      } catch (error) {
+        console.error('Error saving order:', error)
+      }
+
       // Redirect to success page
       window.location.href = `/payment/success?payment_intent=${paymentIntent.id}`
       onSuccess()

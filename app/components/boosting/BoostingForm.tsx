@@ -8,9 +8,14 @@ interface BoostingFormProps {
   category: ServiceCategory
   onPriceChange: (price: number) => void
   onFormChange: (isValid: boolean) => void
+  onFormDataChange?: (data: {
+    gameAccount: string
+    currentLevel: string
+    targetLevel: string
+  }) => void
 }
 
-export function BoostingForm({ category, onPriceChange, onFormChange }: BoostingFormProps) {
+export function BoostingForm({ category, onPriceChange, onFormChange, onFormDataChange }: BoostingFormProps) {
   const { convertPrice } = useCurrency()
   const { t } = useLocaleContext()
   const [gameAccount, setGameAccount] = useState("")
@@ -23,7 +28,14 @@ export function BoostingForm({ category, onPriceChange, onFormChange }: Boosting
 
   useEffect(() => {
     onFormChange(isValid)
-  }, [isValid, onFormChange])
+    if (onFormDataChange) {
+      onFormDataChange({
+        gameAccount,
+        currentLevel,
+        targetLevel,
+      })
+    }
+  }, [isValid, gameAccount, currentLevel, targetLevel, onFormChange, onFormDataChange])
 
   useEffect(() => {
     if (currentLevel && targetLevel) {
