@@ -1,0 +1,460 @@
+"use client"
+
+import { Suspense, useState, useEffect } from "react"
+import { useSession } from "next-auth/react"
+import { Navbar } from "@/app/components/navbar"
+import { Footer } from "@/app/components/footer"
+import { Package, CreditCard, CheckCircle, Clock, TrendingUp, AlertCircle, Loader2 } from "lucide-react"
+import { useLocaleContext } from "@/contexts"
+import { ProfileSkeleton } from "@/app/components/ui"
+
+interface Order {
+  id: string
+  game: string
+  service_category: string
+  game_account: string
+  current_level: string
+  target_level: string
+  amount: number
+  currency: string
+  status: string
+  created_at: string
+  claimed_at?: string
+  estimated_time?: string
+}
+
+interface BoosterStats {
+  totalOrders: number
+  completedOrders: number
+  activeOrders: number
+  totalEarnings: number
+}
+
+function BoosterDashboardContent() {
+  const { data: session, status } = useSession()
+  const { t } = useLocaleContext()
+  const [availableOrders, setAvailableOrders] = useState<Order[]>([])
+  const [myOrders, setMyOrders] = useState<Order[]>([])
+  const [stats, setStats] = useState<BoosterStats>({
+    totalOrders: 0,
+    completedOrders: 0,
+    activeOrders: 0,
+    totalEarnings: 0,
+  })
+  const [isLoadingAvailable, setIsLoadingAvailable] = useState(true)
+  const [isLoadingMyOrders, setIsLoadingMyOrders] = useState(true)
+  const [activeTab, setActiveTab] = useState<'available' | 'my-orders'>('available')
+  const [claimingOrderId, setClaimingOrderId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (session?.user) {
+      fetchAvailableOrders()
+      fetchMyOrders()
+    }
+  }, [session])
+
+  const fetchAvailableOrders = async () => {
+    setIsLoadingAvailable(true)
+    try {
+      const response = await fetch('/api/orders/available')
+      if (response.ok) {
+        const data = await response.json()
+        setAvailableOrders(data.orders || [])
+      } else if (response.status === 403) {
+        // Not a booster, redirect or show message
+        console.error('User is not a booster')
+      }
+    } catch (error) {
+      console.error('Error fetching available orders:', error)
+    } finally {
+      setIsLoadingAvailable(false)
+    }
+  }
+
+  const fetchMyOrders = async () => {
+    setIsLoadingMyOrders(true)
+    try {
+      const response = await fetch('/api/orders/booster')
+      if (response.ok) {
+        const data = await response.json()
+        setMyOrders(data.orders || [])
+        setStats(data.stats || {
+          totalOrders: 0,
+          completedOrders: 0,
+          activeOrders: 0,
+          totalEarnings: 0,
+        })
+      } else if (response.status === 403) {
+        console.error('User is not a booster')
+      }
+    } catch (error) {
+      console.error('Error fetching my orders:', error)
+    } finally {
+      setIsLoadingMyOrders(false)
+    }
+  }
+
+  const handleClaimOrder = async (orderId: string) => {
+    setClaimingOrderId(orderId)
+    try {
+      const response = await fetch('/api/orders/claim', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ orderId }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        // Refresh both lists
+        await fetchAvailableOrders()
+        await fetchMyOrders()
+        alert('Order claimed successfully!')
+      } else {
+        alert(data.error || 'Failed to claim order')
+      }
+    } catch (error) {
+      console.error('Error claiming order:', error)
+      alert('Error claiming order. Please try again.')
+    } finally {
+      setClaimingOrderId(null)
+    }
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return 'text-green-400 bg-green-500/20'
+      case 'processing':
+        return 'text-blue-400 bg-blue-500/20'
+      case 'pending':
+        return 'text-yellow-400 bg-yellow-500/20'
+      case 'cancelled':
+        return 'text-red-400 bg-red-500/20'
+      default:
+        return 'text-gray-400 bg-gray-500/20'
+    }
+  }
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return 'Completed'
+      case 'processing':
+        return 'Processing'
+      case 'pending':
+        return 'Pending'
+      case 'cancelled':
+        return 'Cancelled'
+      default:
+        return status
+    }
+  }
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  }
+
+  const getCategoryDisplay = (category: string) => {
+    const categoryMap: Record<string, string> = {
+      'trophy-boosting': 'Trophy Boosting',
+      'uc-medals-boosting': 'UC Medals Boosting',
+      'crowns-boosting': 'Crowns Boosting',
+    }
+    return categoryMap[category] || category
+  }
+
+  if (status === "loading") {
+    return (
+      <>
+        <Navbar />
+        <ProfileSkeleton />
+        <Footer />
+      </>
+    )
+  }
+
+  if (!session?.user) {
+    return (
+      <div className="flex min-h-screen flex-col">
+        <Navbar />
+        <main className="flex-1 flex items-center justify-center py-24">
+          <div className="text-center">
+            <h1 className="text-4xl font-bold text-gray-100 mb-4">Please Sign In</h1>
+            <p className="text-gray-400 mb-8">You need to be logged in to access the booster dashboard.</p>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex min-h-screen flex-col">
+      <Navbar />
+      
+      <main className="flex-1 mt-16 py-12 md:py-24">
+        <div className="container px-4">
+          <div className="max-w-7xl mx-auto">
+            {/* Header */}
+            <div className="mb-8">
+              <h1 className="text-4xl font-bold text-gray-100 mb-2">Booster Dashboard</h1>
+              <p className="text-gray-400">Manage and claim available orders</p>
+            </div>
+
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+              <div className="bg-gradient-to-br from-blue-950/50 to-cyan-950/50 border border-blue-500/20 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <Package className="h-8 w-8 text-blue-400" />
+                  <span className="text-3xl font-bold text-blue-400">{stats.totalOrders}</span>
+                </div>
+                <h3 className="text-gray-400 text-sm font-medium">Total Orders</h3>
+              </div>
+
+              <div className="bg-gradient-to-br from-green-950/50 to-emerald-950/50 border border-green-500/20 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <CheckCircle className="h-8 w-8 text-green-400" />
+                  <span className="text-3xl font-bold text-green-400">{stats.completedOrders}</span>
+                </div>
+                <h3 className="text-gray-400 text-sm font-medium">Completed</h3>
+              </div>
+
+              <div className="bg-gradient-to-br from-yellow-950/50 to-orange-950/50 border border-yellow-500/20 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <Clock className="h-8 w-8 text-yellow-400" />
+                  <span className="text-3xl font-bold text-yellow-400">{stats.activeOrders}</span>
+                </div>
+                <h3 className="text-gray-400 text-sm font-medium">Active</h3>
+              </div>
+
+              <div className="bg-gradient-to-br from-purple-950/50 to-pink-950/50 border border-purple-500/20 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <TrendingUp className="h-8 w-8 text-purple-400" />
+                  <span className="text-3xl font-bold text-purple-400">${stats.totalEarnings.toFixed(2)}</span>
+                </div>
+                <h3 className="text-gray-400 text-sm font-medium">Total Earnings</h3>
+              </div>
+            </div>
+
+            {/* Tabs */}
+            <div className="bg-gradient-to-br from-zinc-900 to-zinc-950 border-2 border-gray-800 rounded-2xl p-8 md:p-12 shadow-xl">
+              <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-800">
+                <button
+                  onClick={() => setActiveTab('available')}
+                  className={`px-6 py-3 rounded-lg font-semibold transition-colors ${
+                    activeTab === 'available'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-zinc-800 text-gray-400 hover:text-gray-200'
+                  }`}
+                >
+                  Available Orders ({availableOrders.length})
+                </button>
+                <button
+                  onClick={() => setActiveTab('my-orders')}
+                  className={`px-6 py-3 rounded-lg font-semibold transition-colors ${
+                    activeTab === 'my-orders'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-zinc-800 text-gray-400 hover:text-gray-200'
+                  }`}
+                >
+                  My Orders ({myOrders.length})
+                </button>
+              </div>
+
+              {/* Available Orders Tab */}
+              {activeTab === 'available' && (
+                <div>
+                  {isLoadingAvailable ? (
+                    <div className="text-center py-12">
+                      <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
+                      <p className="text-gray-500">Loading available orders...</p>
+                    </div>
+                  ) : availableOrders.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Package className="h-16 w-16 text-gray-700 mx-auto mb-4" />
+                      <p className="text-gray-500 mb-2">No available orders</p>
+                      <p className="text-sm text-gray-600">All orders have been claimed</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {availableOrders.map((order) => (
+                        <div
+                          key={order.id}
+                          className="bg-zinc-800/50 border border-gray-700 rounded-lg p-6 hover:border-blue-500/50 transition-colors"
+                        >
+                          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                            <div className="flex-1">
+                              <div className="flex items-start gap-4">
+                                <div className="p-3 bg-blue-500/20 rounded-lg">
+                                  <Package className="h-5 w-5 text-blue-400" />
+                                </div>
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-3 mb-2">
+                                    <h3 className="text-lg font-semibold text-gray-100">
+                                      {getCategoryDisplay(order.service_category)}
+                                    </h3>
+                                    <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(order.status)}`}>
+                                      {getStatusText(order.status)}
+                                    </span>
+                                  </div>
+                                  <div className="space-y-1 text-sm text-gray-400">
+                                    <p>
+                                      <span className="font-medium">Account:</span> {order.game_account}
+                                    </p>
+                                    <p>
+                                      <span className="font-medium">Progress:</span> {order.current_level} → {order.target_level}
+                                    </p>
+                                    {order.estimated_time && (
+                                      <p className="flex items-center gap-2">
+                                        <Clock className="h-3 w-3" />
+                                        <span>{order.estimated_time}</span>
+                                      </p>
+                                    )}
+                                    <p className="text-xs text-gray-500">
+                                      Created: {formatDate(order.created_at)}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex flex-col items-end gap-3">
+                              <div className="text-right">
+                                <p className="text-2xl font-bold text-blue-400">
+                                  ${Number(order.amount).toFixed(2)}
+                                </p>
+                                <p className="text-xs text-gray-500">{order.currency.toUpperCase()}</p>
+                              </div>
+                              <button
+                                onClick={() => handleClaimOrder(order.id)}
+                                disabled={claimingOrderId === order.id}
+                                className="px-6 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                              >
+                                {claimingOrderId === order.id ? (
+                                  <>
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Claiming...
+                                  </>
+                                ) : (
+                                  <>
+                                    <TrendingUp className="h-4 w-4" />
+                                    Claim Order
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* My Orders Tab */}
+              {activeTab === 'my-orders' && (
+                <div>
+                  {isLoadingMyOrders ? (
+                    <div className="text-center py-12">
+                      <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
+                      <p className="text-gray-500">Loading your orders...</p>
+                    </div>
+                  ) : myOrders.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Package className="h-16 w-16 text-gray-700 mx-auto mb-4" />
+                      <p className="text-gray-500 mb-2">No orders yet</p>
+                      <p className="text-sm text-gray-600">Claim orders from the "Available Orders" tab</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {myOrders.map((order) => (
+                        <div
+                          key={order.id}
+                          className="bg-zinc-800/50 border border-gray-700 rounded-lg p-6 hover:border-blue-500/50 transition-colors"
+                        >
+                          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                            <div className="flex-1">
+                              <div className="flex items-start gap-4">
+                                <div className="p-3 bg-blue-500/20 rounded-lg">
+                                  <Package className="h-5 w-5 text-blue-400" />
+                                </div>
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-3 mb-2">
+                                    <h3 className="text-lg font-semibold text-gray-100">
+                                      {getCategoryDisplay(order.service_category)}
+                                    </h3>
+                                    <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(order.status)}`}>
+                                      {getStatusText(order.status)}
+                                    </span>
+                                  </div>
+                                  <div className="space-y-1 text-sm text-gray-400">
+                                    <p>
+                                      <span className="font-medium">Account:</span> {order.game_account}
+                                    </p>
+                                    <p>
+                                      <span className="font-medium">Progress:</span> {order.current_level} → {order.target_level}
+                                    </p>
+                                    {order.estimated_time && (
+                                      <p className="flex items-center gap-2">
+                                        <Clock className="h-3 w-3" />
+                                        <span>{order.estimated_time}</span>
+                                      </p>
+                                    )}
+                                    {order.claimed_at && (
+                                      <p className="text-xs text-green-400">
+                                        Claimed: {formatDate(order.claimed_at)}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex flex-col items-end gap-2">
+                              <div className="text-right">
+                                <p className="text-2xl font-bold text-blue-400">
+                                  ${Number(order.amount).toFixed(2)}
+                                </p>
+                                <p className="text-xs text-gray-500">{order.currency.toUpperCase()}</p>
+                              </div>
+                              <p className="text-xs text-gray-500">{formatDate(order.created_at)}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <Footer />
+    </div>
+  )
+}
+
+export default function BoosterDashboardPage() {
+  return (
+    <Suspense fallback={
+      <>
+        <Navbar />
+        <ProfileSkeleton />
+        <Footer />
+      </>
+    }>
+      <BoosterDashboardContent />
+    </Suspense>
+  )
+}
+

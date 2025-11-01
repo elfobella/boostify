@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { User, LogOut, Settings } from "lucide-react"
+import { User, LogOut, Settings, Briefcase } from "lucide-react"
 import { useSession, signOut } from "next-auth/react"
 import { useLocaleContext } from "@/contexts"
 import Image from "next/image"
@@ -11,7 +11,26 @@ export function UserMenu() {
   const { data: session } = useSession()
   const { t } = useLocaleContext()
   const [isOpen, setIsOpen] = React.useState(false)
+  const [userRole, setUserRole] = React.useState<string>('customer')
   const router = useRouter()
+
+  React.useEffect(() => {
+    if (session?.user) {
+      fetchUserRole()
+    }
+  }, [session])
+
+  const fetchUserRole = async () => {
+    try {
+      const response = await fetch('/api/user/role')
+      if (response.ok) {
+        const data = await response.json()
+        setUserRole(data.role || 'customer')
+      }
+    } catch (error) {
+      console.error('Error fetching user role:', error)
+    }
+  }
 
   if (!session?.user) {
     return null
@@ -97,6 +116,19 @@ export function UserMenu() {
                 <User className="h-4 w-4" />
                 {t("auth.profile")}
               </button>
+
+              {userRole === 'booster' && (
+                <button
+                  onClick={() => {
+                    router.push("/booster/dashboard")
+                    setIsOpen(false)
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:bg-zinc-800 transition-colors"
+                >
+                  <Briefcase className="h-4 w-4" />
+                  Booster Dashboard
+                </button>
+              )}
 
               <button
                 onClick={() => {
