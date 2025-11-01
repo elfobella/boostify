@@ -28,7 +28,22 @@ export async function POST(req: NextRequest) {
 
     // Get session to get user ID
     const session = await auth()
-    const userId = session?.user?.id || null
+    
+    // Get Supabase user ID from users table
+    let userId = null
+    if (session?.user?.email) {
+      if (!supabaseAdmin) {
+        console.warn('[Orders API] Supabase admin client not initialized - order will be saved without user_id')
+      } else {
+        const { data: userData } = await supabaseAdmin
+          .from('users')
+          .select('id')
+          .eq('email', session.user.email)
+          .single()
+        
+        userId = userData?.id || null
+      }
+    }
 
     // Retrieve payment intent from Stripe to get metadata
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId)
