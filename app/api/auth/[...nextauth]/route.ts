@@ -163,13 +163,36 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async session({ session, token }) {
       if (session.user && token.sub) {
         session.user.id = token.sub
+        session.user.role = token.role as string | undefined
       }
       return session
     },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id
+        token.email = user.email
       }
+      
+      // Fetch user role from database (on every request to keep it fresh)
+      if (token.email && !token.role) {
+        const { supabaseAdmin } = await import("@/lib/supabase")
+        if (supabaseAdmin) {
+          const { data: userData } = await supabaseAdmin
+            .from('users')
+            .select('role')
+            .eq('email', token.email)
+            .single()
+          
+          if (userData) {
+            token.role = userData.role || 'customer'
+          } else {
+            token.role = 'customer'
+          }
+        } else {
+          token.role = 'customer'
+        }
+      }
+      
       return token
     },
   },

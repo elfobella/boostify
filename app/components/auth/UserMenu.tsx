@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { User, LogOut, Settings, Briefcase } from "lucide-react"
+import { User, LogOut, Settings, Briefcase, MessageCircle } from "lucide-react"
 import { useSession, signOut } from "next-auth/react"
 import { useLocaleContext } from "@/contexts"
 import Image from "next/image"
@@ -11,24 +11,27 @@ export function UserMenu() {
   const { data: session } = useSession()
   const { t } = useLocaleContext()
   const [isOpen, setIsOpen] = React.useState(false)
-  const [userRole, setUserRole] = React.useState<string>('customer')
+  const [unreadCount, setUnreadCount] = React.useState(0)
   const router = useRouter()
+  
+  const userRole = session?.user?.role || 'customer'
 
   React.useEffect(() => {
     if (session?.user) {
-      fetchUserRole()
+      fetchUnreadCount()
     }
   }, [session])
 
-  const fetchUserRole = async () => {
+  const fetchUnreadCount = async () => {
     try {
-      const response = await fetch('/api/user/role')
+      const response = await fetch('/api/chats/users')
       if (response.ok) {
         const data = await response.json()
-        setUserRole(data.role || 'customer')
+        // TODO: Calculate unread messages count
+        setUnreadCount(0)
       }
     } catch (error) {
-      console.error('Error fetching user role:', error)
+      console.error('Error fetching unread count:', error)
     }
   }
 
@@ -129,6 +132,22 @@ export function UserMenu() {
                   Booster Dashboard
                 </button>
               )}
+
+              <button
+                onClick={() => {
+                  router.push("/chats")
+                  setIsOpen(false)
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:bg-zinc-800 transition-colors relative"
+              >
+                <MessageCircle className="h-4 w-4" />
+                Chats
+                {unreadCount > 0 && (
+                  <span className="ml-auto px-2 py-0.5 text-xs font-bold text-white bg-red-500 rounded-full">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
 
               <button
                 onClick={() => {

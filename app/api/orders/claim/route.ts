@@ -101,9 +101,46 @@ export async function POST(req: NextRequest) {
 
     console.log('[Orders API] ✅ Order claimed successfully:', updatedOrder.id)
 
+    // ✅ Order başarıyla claim edildi, şimdi chat oluştur
+    const { data: chat, error: chatError } = await supabaseAdmin
+      .from('chats')
+      .insert({
+        order_id: updatedOrder.id,
+        customer_id: updatedOrder.user_id,
+        booster_id: userData.id,
+        status: 'active',
+      })
+      .select()
+      .single()
+
+    if (chatError) {
+      console.error('[Orders API] Failed to create chat:', chatError)
+      // Chat oluşturulamadı ama order claim edildi, warning log
+    } else {
+      console.log('[Orders API] ✅ Chat created successfully:', chat.id)
+      
+      // İlk sistem mesajını oluştur
+      await supabaseAdmin
+        .from('messages')
+        .insert({
+          chat_id: chat.id,
+          sender_id: userData.id,
+          content: `I've claimed your order. I'll start working on it soon!`,
+          message_type: 'system',
+        })
+        .then(({ error: msgError }) => {
+          if (msgError) {
+            console.error('[Orders API] Failed to create initial message:', msgError)
+          } else {
+            console.log('[Orders API] ✅ Initial message sent')
+          }
+        })
+    }
+
     return NextResponse.json({
       message: 'Order claimed successfully',
       order: updatedOrder,
+      chatId: chat?.id, // Frontend'e chat ID gönder
     }, { status: 200 })
   } catch (error) {
     console.error('[Orders API] Exception:', error)

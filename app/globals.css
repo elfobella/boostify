@@ -5,6 +5,47 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* Fix Stripe PaymentElement z-index issues - Force all Stripe elements to stay below modal header */
+.StripeElement,
+[data-testid="payment-element"],
+div[class*="StripeElement"],
+div[id*="payment-element"],
+iframe[src*="stripe"],
+.StripeElement *,
+[data-testid="payment-element"] * {
+  position: relative !important;
+  z-index: 0 !important;
+}
+
+/* Ensure Stripe links stay within modal - especially Privacy, Terms, Cookies, Legal */
+.StripeElement a,
+[data-testid="payment-element"] a,
+div[class*="StripeElement"] a,
+div[id*="payment-element"] a,
+.StripeElement p a,
+[data-testid="payment-element"] p a {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+/* Force footer and all its children below modals */
+footer,
+footer *,
+footer a,
+footer div,
+footer ul,
+footer li {
+  position: relative !important;
+  z-index: 0 !important;
+}
+
+/* Ensure payment modal header stays on top */
+[class*="payment-modal"] header,
+[class*="PaymentModal"] header,
+div[class*="modal"] > div:first-child {
+  z-index: 99999 !important;
+}
+
 body {
   background-color: #0a0a0a;
   color: #fafafa;

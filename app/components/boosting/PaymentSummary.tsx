@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { CheckCircle2, Shield, Clock, CreditCard } from "lucide-react"
+import { CheckCircle2, Shield, Clock, CreditCard, Radio, Users, EyeOff } from "lucide-react"
 import { useLocaleContext, useCurrency } from "@/contexts"
 import { PaymentModal } from "@/app/components/payment"
 import { CardSkeleton } from "@/app/components/ui"
@@ -26,6 +26,9 @@ export function PaymentSummary({ price, estimatedTime, isValid, onProceed, order
   const { convertPrice } = useCurrency()
   const { t } = useLocaleContext()
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
+  const [isStreamEnabled, setIsStreamEnabled] = useState(false)
+  const [isSoloQueueEnabled, setIsSoloQueueEnabled] = useState(false)
+  const [isOfflineModeEnabled, setIsOfflineModeEnabled] = useState(false)
 
   const handleProceedClick = () => {
     if (isValid && price > 0) {
@@ -76,6 +79,80 @@ export function PaymentSummary({ price, estimatedTime, isValid, onProceed, order
             <p className="text-sm text-gray-500">Fill in the details to see pricing</p>
           </div>
         )}
+
+        {/* Add-ons/Toggles */}
+        <div className="space-y-3 border-t border-gray-800 pt-4">
+          <h4 className="text-sm font-semibold text-gray-300 mb-3">Add-ons</h4>
+          
+          {/* Stream Toggle */}
+          <div className="flex items-center justify-between p-3 bg-zinc-800/50 rounded-lg border border-gray-700/50 hover:border-gray-600 transition-colors">
+            <div className="flex items-center gap-3">
+              <Radio className="h-5 w-5 text-blue-400" />
+              <div>
+                <p className="text-sm font-medium text-gray-200">Stream</p>
+                <p className="text-xs text-gray-500">Watch your boost live</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setIsStreamEnabled(!isStreamEnabled)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                isStreamEnabled ? 'bg-blue-600' : 'bg-gray-700'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  isStreamEnabled ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Solo Queue Toggle */}
+          <div className="flex items-center justify-between p-3 bg-zinc-800/50 rounded-lg border border-gray-700/50 hover:border-gray-600 transition-colors">
+            <div className="flex items-center gap-3">
+              <Users className="h-5 w-5 text-green-400" />
+              <div>
+                <p className="text-sm font-medium text-gray-200">Solo Queue</p>
+                <p className="text-xs text-gray-500">Play solo matches only</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setIsSoloQueueEnabled(!isSoloQueueEnabled)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                isSoloQueueEnabled ? 'bg-green-600' : 'bg-gray-700'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  isSoloQueueEnabled ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Offline Mode Toggle */}
+          <div className="flex items-center justify-between p-3 bg-zinc-800/50 rounded-lg border border-gray-700/50 hover:border-gray-600 transition-colors">
+            <div className="flex items-center gap-3">
+              <EyeOff className="h-5 w-5 text-purple-400" />
+              <div>
+                <p className="text-sm font-medium text-gray-200">Offline Mode</p>
+                <p className="text-xs text-gray-500">Play without appearing online</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setIsOfflineModeEnabled(!isOfflineModeEnabled)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                isOfflineModeEnabled ? 'bg-purple-600' : 'bg-gray-700'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  isOfflineModeEnabled ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+        </div>
 
         {/* Features */}
         <div className="space-y-3">

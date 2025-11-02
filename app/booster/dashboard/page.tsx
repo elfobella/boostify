@@ -123,6 +123,7 @@ function BoosterDashboardContent() {
     }
   }
 
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
@@ -247,21 +248,21 @@ function BoosterDashboardContent() {
             </div>
 
             {/* Tabs */}
-            <div className="bg-gradient-to-br from-zinc-900 to-zinc-950 border-2 border-gray-800 rounded-2xl p-8 md:p-12 shadow-xl">
-              <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-800">
+            <div className="bg-gradient-to-br from-zinc-900 to-zinc-950 border-2 border-gray-800 rounded-2xl p-4 md:p-8 lg:p-12 shadow-xl">
+              <div className="flex items-center gap-2 md:gap-4 mb-4 md:mb-6 pb-3 md:pb-4 border-b border-gray-800">
                 <button
                   onClick={() => setActiveTab('available')}
-                  className={`px-6 py-3 rounded-lg font-semibold transition-colors ${
+                  className={`px-3 py-2 md:px-6 md:py-3 rounded-lg text-sm md:text-base font-semibold transition-colors ${
                     activeTab === 'available'
                       ? 'bg-blue-600 text-white'
                       : 'bg-zinc-800 text-gray-400 hover:text-gray-200'
                   }`}
                 >
-                  Available Orders ({availableOrders.length})
+                  Available ({availableOrders.length})
                 </button>
                 <button
                   onClick={() => setActiveTab('my-orders')}
-                  className={`px-6 py-3 rounded-lg font-semibold transition-colors ${
+                  className={`px-3 py-2 md:px-6 md:py-3 rounded-lg text-sm md:text-base font-semibold transition-colors ${
                     activeTab === 'my-orders'
                       ? 'bg-blue-600 text-white'
                       : 'bg-zinc-800 text-gray-400 hover:text-gray-200'
@@ -286,71 +287,126 @@ function BoosterDashboardContent() {
                       <p className="text-sm text-gray-600">All orders have been claimed</p>
                     </div>
                   ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-2">
                       {availableOrders.map((order) => (
                         <div
                           key={order.id}
-                          className="bg-zinc-800/50 border border-gray-700 rounded-lg p-6 hover:border-blue-500/50 transition-colors"
+                          className="relative bg-gradient-to-br from-zinc-800/80 to-zinc-900/50 border border-gray-700/50 hover:border-blue-500/50 transition-all duration-200 rounded-lg overflow-hidden group"
                         >
-                          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                            <div className="flex-1">
-                              <div className="flex items-start gap-4">
-                                <div className="p-3 bg-blue-500/20 rounded-lg">
-                                  <Package className="h-5 w-5 text-blue-400" />
+                          {/* Gradient accent */}
+                          <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-blue-600 to-cyan-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          
+                          <div className="p-3">
+                            {/* Mobile/Tablet Layout */}
+                            <div className="block md:hidden space-y-2.5">
+                              {/* Header */}
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                                  <div className="p-2 bg-blue-500/20 rounded-lg flex-shrink-0">
+                                    <Package className="h-4 w-4 text-blue-400" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <h3 className="text-sm font-semibold text-gray-100 truncate">
+                                        {getCategoryDisplay(order.service_category)}
+                                      </h3>
+                                      <span className={`px-1.5 py-0.5 rounded text-xs font-medium flex-shrink-0 ${getStatusColor(order.status)}`}>
+                                        {getStatusText(order.status)}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-3 text-xs text-gray-400">
+                                      <span className="truncate">{order.game_account}</span>
+                                      <span className="text-gray-600">•</span>
+                                      <span>{order.current_level} → {order.target_level}</span>
+                                    </div>
+                                  </div>
                                 </div>
-                                <div className="flex-1">
+                                <div className="text-right flex-shrink-0">
+                                  <p className="text-lg font-bold text-blue-400">
+                                    ${Number(order.amount).toFixed(2)}
+                                  </p>
+                                </div>
+                              </div>
+                              
+                              {/* Claim Button */}
+                              <button
+                                onClick={() => handleClaimOrder(order.id)}
+                                disabled={claimingOrderId === order.id}
+                                className="w-full px-3 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-lg text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                              >
+                                {claimingOrderId === order.id ? (
+                                  <>
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    Claiming...
+                                  </>
+                                ) : (
+                                  <>
+                                    <TrendingUp className="h-3.5 w-3.5" />
+                                    Claim Order
+                                  </>
+                                )}
+                              </button>
+                            </div>
+
+                            {/* Desktop Layout */}
+                            <div className="hidden md:flex items-center justify-between gap-6">
+                              <div className="flex items-center gap-4 flex-1 min-w-0">
+                                <div className="p-3 bg-blue-500/20 rounded-lg flex-shrink-0">
+                                  <Package className="h-6 w-6 text-blue-400" />
+                                </div>
+                                <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-3 mb-2">
-                                    <h3 className="text-lg font-semibold text-gray-100">
+                                    <h3 className="text-lg font-semibold text-gray-100 truncate">
                                       {getCategoryDisplay(order.service_category)}
                                     </h3>
-                                    <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(order.status)}`}>
+                                    <span className={`px-2.5 py-1 rounded-md text-xs font-medium flex-shrink-0 ${getStatusColor(order.status)}`}>
                                       {getStatusText(order.status)}
                                     </span>
                                   </div>
-                                  <div className="space-y-1 text-sm text-gray-400">
-                                    <p>
-                                      <span className="font-medium">Account:</span> {order.game_account}
+                                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-gray-400">
+                                    <p className="truncate">
+                                      <span className="font-medium text-gray-300">Account:</span> {order.game_account}
                                     </p>
                                     <p>
-                                      <span className="font-medium">Progress:</span> {order.current_level} → {order.target_level}
+                                      <span className="font-medium text-gray-300">Progress:</span> {order.current_level} → {order.target_level}
                                     </p>
                                     {order.estimated_time && (
-                                      <p className="flex items-center gap-2">
-                                        <Clock className="h-3 w-3" />
+                                      <p className="flex items-center gap-2 col-span-2">
+                                        <Clock className="h-3.5 w-3.5 flex-shrink-0" />
                                         <span>{order.estimated_time}</span>
                                       </p>
                                     )}
-                                    <p className="text-xs text-gray-500">
+                                    <p className="text-xs text-gray-500 col-span-2">
                                       Created: {formatDate(order.created_at)}
                                     </p>
                                   </div>
                                 </div>
                               </div>
-                            </div>
-                            <div className="flex flex-col items-end gap-3">
-                              <div className="text-right">
-                                <p className="text-2xl font-bold text-blue-400">
-                                  ${Number(order.amount).toFixed(2)}
-                                </p>
-                                <p className="text-xs text-gray-500">{order.currency.toUpperCase()}</p>
+                              <div className="flex flex-col items-end gap-3 flex-shrink-0">
+                                <div className="text-right">
+                                  <p className="text-2xl font-bold text-blue-400">
+                                    ${Number(order.amount).toFixed(2)}
+                                  </p>
+                                  <p className="text-xs text-gray-500">{order.currency.toUpperCase()}</p>
+                                </div>
+                                <button
+                                  onClick={() => handleClaimOrder(order.id)}
+                                  disabled={claimingOrderId === order.id}
+                                  className="px-6 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                >
+                                  {claimingOrderId === order.id ? (
+                                    <>
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                      Claiming...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <TrendingUp className="h-4 w-4" />
+                                      Claim Order
+                                    </>
+                                  )}
+                                </button>
                               </div>
-                              <button
-                                onClick={() => handleClaimOrder(order.id)}
-                                disabled={claimingOrderId === order.id}
-                                className="px-6 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                              >
-                                {claimingOrderId === order.id ? (
-                                  <>
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    Claiming...
-                                  </>
-                                ) : (
-                                  <>
-                                    <TrendingUp className="h-4 w-4" />
-                                    Claim Order
-                                  </>
-                                )}
-                              </button>
                             </div>
                           </div>
                         </div>
@@ -375,57 +431,92 @@ function BoosterDashboardContent() {
                       <p className="text-sm text-gray-600">Claim orders from the "Available Orders" tab</p>
                     </div>
                   ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-2">
                       {myOrders.map((order) => (
                         <div
                           key={order.id}
-                          className="bg-zinc-800/50 border border-gray-700 rounded-lg p-6 hover:border-blue-500/50 transition-colors"
+                          className="relative bg-gradient-to-br from-zinc-800/80 to-zinc-900/50 border border-gray-700/50 hover:border-blue-500/50 transition-all duration-200 rounded-lg overflow-hidden group"
                         >
-                          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                            <div className="flex-1">
-                              <div className="flex items-start gap-4">
-                                <div className="p-3 bg-blue-500/20 rounded-lg">
-                                  <Package className="h-5 w-5 text-blue-400" />
+                          {/* Gradient accent */}
+                          <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-blue-600 to-cyan-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          
+                          <div className="p-3">
+                            {/* Mobile/Tablet Layout */}
+                            <div className="block md:hidden">
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                                  <div className="p-2 bg-blue-500/20 rounded-lg flex-shrink-0">
+                                    <Package className="h-4 w-4 text-blue-400" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <h3 className="text-sm font-semibold text-gray-100 truncate">
+                                        {getCategoryDisplay(order.service_category)}
+                                      </h3>
+                                      <span className={`px-1.5 py-0.5 rounded text-xs font-medium flex-shrink-0 ${getStatusColor(order.status)}`}>
+                                        {getStatusText(order.status)}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-3 text-xs text-gray-400">
+                                      <span className="truncate">{order.game_account}</span>
+                                      <span className="text-gray-600">•</span>
+                                      <span>{order.current_level} → {order.target_level}</span>
+                                    </div>
+                                  </div>
                                 </div>
-                                <div className="flex-1">
+                                <div className="text-right flex-shrink-0">
+                                  <p className="text-lg font-bold text-blue-400">
+                                    ${Number(order.amount).toFixed(2)}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Desktop Layout */}
+                            <div className="hidden md:flex items-center justify-between gap-6">
+                              <div className="flex items-center gap-4 flex-1 min-w-0">
+                                <div className="p-3 bg-blue-500/20 rounded-lg flex-shrink-0">
+                                  <Package className="h-6 w-6 text-blue-400" />
+                                </div>
+                                <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-3 mb-2">
-                                    <h3 className="text-lg font-semibold text-gray-100">
+                                    <h3 className="text-lg font-semibold text-gray-100 truncate">
                                       {getCategoryDisplay(order.service_category)}
                                     </h3>
-                                    <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(order.status)}`}>
+                                    <span className={`px-2.5 py-1 rounded-md text-xs font-medium flex-shrink-0 ${getStatusColor(order.status)}`}>
                                       {getStatusText(order.status)}
                                     </span>
                                   </div>
-                                  <div className="space-y-1 text-sm text-gray-400">
-                                    <p>
-                                      <span className="font-medium">Account:</span> {order.game_account}
+                                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-gray-400">
+                                    <p className="truncate">
+                                      <span className="font-medium text-gray-300">Account:</span> {order.game_account}
                                     </p>
                                     <p>
-                                      <span className="font-medium">Progress:</span> {order.current_level} → {order.target_level}
+                                      <span className="font-medium text-gray-300">Progress:</span> {order.current_level} → {order.target_level}
                                     </p>
                                     {order.estimated_time && (
-                                      <p className="flex items-center gap-2">
-                                        <Clock className="h-3 w-3" />
+                                      <p className="flex items-center gap-2 col-span-2">
+                                        <Clock className="h-3.5 w-3.5 flex-shrink-0" />
                                         <span>{order.estimated_time}</span>
                                       </p>
                                     )}
                                     {order.claimed_at && (
-                                      <p className="text-xs text-green-400">
+                                      <p className="text-xs text-green-400 col-span-2">
                                         Claimed: {formatDate(order.claimed_at)}
                                       </p>
                                     )}
                                   </div>
                                 </div>
                               </div>
-                            </div>
-                            <div className="flex flex-col items-end gap-2">
-                              <div className="text-right">
-                                <p className="text-2xl font-bold text-blue-400">
-                                  ${Number(order.amount).toFixed(2)}
-                                </p>
-                                <p className="text-xs text-gray-500">{order.currency.toUpperCase()}</p>
+                              <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                                <div className="text-right">
+                                  <p className="text-2xl font-bold text-blue-400">
+                                    ${Number(order.amount).toFixed(2)}
+                                  </p>
+                                  <p className="text-xs text-gray-500">{order.currency.toUpperCase()}</p>
+                                </div>
+                                <p className="text-xs text-gray-500">{formatDate(order.created_at)}</p>
                               </div>
-                              <p className="text-xs text-gray-500">{formatDate(order.created_at)}</p>
                             </div>
                           </div>
                         </div>

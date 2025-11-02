@@ -79,8 +79,14 @@ export function StripeCheckout({ clientSecret, onSuccess, onCancel, paymentInten
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <PaymentElement />
+    <form onSubmit={handleSubmit} className="space-y-6 relative z-0">
+      <div className="relative z-0" style={{ isolation: 'isolate' }}>
+        <PaymentElement 
+          options={{
+            layout: 'tabs'
+          }}
+        />
+      </div>
       
       <div className="flex gap-4">
         <button
