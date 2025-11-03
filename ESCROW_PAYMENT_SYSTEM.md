@@ -989,7 +989,50 @@ STRIPE_CONNECT_CLIENT_ID=ca_...
 
 ---
 
-**Document Version:** 1.0  
+## Implementation Roadmap
+
+### Phase 1: MVP without Stripe Connect (Current)
+**Status**: Ready for implementation
+
+For the initial MVP, we'll implement a simplified version:
+- Payment captured and held in Stripe
+- Platform keeps 100% initially
+- Manual payout to boosters via admin dashboard or separate payout system
+- Order approval/rejection working
+- Refunds working
+
+**Pros:**
+- Faster to implement
+- No additional Stripe setup
+- Good for testing
+
+**Cons:**
+- Manual payout process
+- Platform needs to manage booster payments separately
+- Not scalable long-term
+
+### Phase 2: Full Stripe Connect Implementation (Future)
+**Status**: Requires Stripe Connect setup
+
+When ready to scale:
+1. Set up Stripe Connect platform account
+2. Implement booster onboarding flow
+3. Configure automatic payouts
+4. Migrate to application fees
+
+---
+
+## Important Notes
+
+⚠️ **Current Implementation**: The code in this document assumes Stripe Connect. For the MVP without Connect:
+- Use `capture_method: 'automatic'` instead of manual capture
+- Payment will be held in Stripe's account
+- Platform must manually transfer to boosters or use separate payout system
+- Remove `application_fee_amount` and `transfer_data` from PaymentIntent creation
+
+---
+
+**Document Version:** 1.1  
 **Last Updated:** 2025-01-26  
 **Author:** System Architecture Team
 
