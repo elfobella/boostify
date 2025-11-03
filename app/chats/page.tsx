@@ -2,10 +2,10 @@
 
 import { Suspense, useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
 import { Navbar } from "@/app/components/navbar"
 import { Footer } from "@/app/components/footer"
-import { MessageCircle, Loader2, Package } from "lucide-react"
+import { MessageCircle, Loader2 } from "lucide-react"
+import { ChatWindow } from "@/app/components/chat"
 import Image from "next/image"
 
 interface Chat {
@@ -38,9 +38,9 @@ interface Chat {
 
 function ChatsListContent() {
   const { data: session, status } = useSession()
-  const router = useRouter()
   const [chats, setChats] = useState<Chat[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [selectedChatId, setSelectedChatId] = useState<string | null>(null)
 
   useEffect(() => {
     if (session?.user) {
@@ -55,26 +55,16 @@ function ChatsListContent() {
       if (response.ok) {
         const data = await response.json()
         setChats(data.chats || [])
+        
+        // Auto-select first chat if available
+        if (data.chats && data.chats.length > 0 && !selectedChatId) {
+          setSelectedChatId(data.chats[0].id)
+        }
       }
     } catch (error) {
       console.error('Error fetching chats:', error)
     } finally {
       setIsLoading(false)
-    }
-  }
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    const now = new Date()
-    const diff = now.getTime() - date.getTime()
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-
-    if (days === 0) {
-      return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-    } else if (days < 7) {
-      return `${days}d ago`
-    } else {
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
     }
   }
 
@@ -124,76 +114,102 @@ function ChatsListContent() {
     <div className="flex min-h-screen flex-col">
       <Navbar />
       
-      <main className="flex-1 mt-16 py-12">
-        <div className="container px-4">
-          <div className="max-w-4xl mx-auto">
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold text-gray-100 mb-2">My Chats</h1>
-              <p className="text-gray-400">Communicate with your customers and boosters</p>
+      <main className="flex-1 mt-16">
+        <div className="container px-4 mx-auto h-[calc(100vh-4rem)]">
+          <div className="flex gap-4 h-full py-4">
+            {/* Sidebar - Chat List */}
+            <div className="w-full md:w-96 flex-shrink-0 flex flex-col bg-gradient-to-br from-zinc-900 to-zinc-950 border-2 border-gray-800 rounded-2xl shadow-xl overflow-hidden">
+              <div className="p-4 border-b border-gray-800">
+                <h1 className="text-2xl font-bold text-gray-100 mb-1">Chats</h1>
+                <p className="text-sm text-gray-400">Select a conversation</p>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto p-4">
+                {chats.length === 0 ? (
+                  <div className="text-center py-12">
+                    <MessageCircle className="h-12 w-12 text-gray-700 mx-auto mb-4" />
+                    <p className="text-gray-500 mb-2">No chats yet</p>
+                    <p className="text-sm text-gray-600">
+                      Start a conversation by claiming or placing an order
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {chats.map((chat) => {
+                      const otherParticipant = getOtherParticipant(chat)
+                      const isSelected = chat.id === selectedChatId
+                      return (
+                        <button
+                          key={chat.id}
+                          onClick={() => setSelectedChatId(chat.id)}
+                          className={`w-full p-3 rounded-lg border transition-all text-left ${
+                            isSelected 
+                              ? 'bg-blue-600/20 border-blue-500' 
+                              : 'bg-zinc-800/50 border-gray-700 hover:border-blue-500/50 hover:bg-zinc-800'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            {/* Avatar */}
+                            {otherParticipant?.image ? (
+                              <Image
+                                src={otherParticipant.image}
+                                alt={otherParticipant.name || 'User'}
+                                width={40}
+                                height={40}
+                                className="rounded-full"
+                              />
+                            ) : (
+                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-cyan-600 flex items-center justify-center flex-shrink-0">
+                                <span className="text-sm font-bold text-white">
+                                  {(otherParticipant?.name?.[0] || 'U').toUpperCase()}
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Chat Info */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h3 className="font-semibold text-gray-100 truncate text-sm">
+                                  {otherParticipant?.name || otherParticipant?.email || 'Unknown User'}
+                                </h3>
+                                <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
+                                  chat.status === 'active' 
+                                    ? 'text-green-400 bg-green-500/20' 
+                                    : 'text-gray-400 bg-gray-500/20'
+                                }`}>
+                                  {chat.status}
+                                </span>
+                              </div>
+                              {chat.order?.service_category && (
+                                <p className="text-xs text-gray-400 truncate">
+                                  {chat.order.service_category}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div className="bg-gradient-to-br from-zinc-900 to-zinc-950 border-2 border-gray-800 rounded-2xl p-8 md:p-12 shadow-xl">
-              {chats.length === 0 ? (
-                <div className="text-center py-12">
-                  <MessageCircle className="h-16 w-16 text-gray-700 mx-auto mb-4" />
-                  <p className="text-gray-500 mb-2">No chats yet</p>
-                  <p className="text-sm text-gray-600">
-                    Start a conversation by claiming or placing an order
-                  </p>
+            {/* Main - Chat Window */}
+            <div className="flex-1 flex flex-col min-w-0">
+              {selectedChatId ? (
+                <div className="h-full bg-gradient-to-br from-zinc-900 to-zinc-950 border-2 border-gray-800 rounded-2xl shadow-xl overflow-hidden">
+                  <ChatWindow chatId={selectedChatId} />
                 </div>
               ) : (
-                <div className="space-y-2">
-                  {chats.map((chat) => {
-                    const otherParticipant = getOtherParticipant(chat)
-                    return (
-                      <button
-                        key={chat.id}
-                        onClick={() => router.push(`/chat/${chat.id}`)}
-                        className="w-full p-4 bg-zinc-800/50 border border-gray-700 rounded-lg hover:border-blue-500/50 hover:bg-zinc-800 transition-all text-left"
-                      >
-                        <div className="flex items-center gap-4">
-                          {/* Avatar */}
-                          {otherParticipant?.image ? (
-                            <Image
-                              src={otherParticipant.image}
-                              alt={otherParticipant.name || 'User'}
-                              width={48}
-                              height={48}
-                              className="rounded-full"
-                            />
-                          ) : (
-                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-600 to-cyan-600 flex items-center justify-center flex-shrink-0">
-                              <span className="text-lg font-bold text-white">
-                                {(otherParticipant?.name?.[0] || 'U').toUpperCase()}
-                              </span>
-                            </div>
-                          )}
-
-                          {/* Chat Info */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h3 className="font-semibold text-gray-100 truncate">
-                                {otherParticipant?.name || otherParticipant?.email || 'Unknown User'}
-                              </h3>
-                              <span className={`px-2 py-1 rounded text-xs font-medium ${chat.status === 'active' ? 'text-green-400 bg-green-500/20' : 'text-gray-400 bg-gray-500/20'}`}>
-                                {chat.status}
-                              </span>
-                            </div>
-                            {chat.order?.service_category && (
-                              <p className="text-sm text-gray-400 truncate">
-                                {chat.order.service_category}
-                              </p>
-                            )}
-                          </div>
-
-                          {/* Timestamp */}
-                          <div className="text-right text-xs text-gray-500">
-                            {formatDate(chat.updated_at)}
-                          </div>
-                        </div>
-                      </button>
-                    )
-                  })}
+                <div className="h-full flex items-center justify-center bg-gradient-to-br from-zinc-900 to-zinc-950 border-2 border-gray-800 rounded-2xl shadow-xl">
+                  <div className="text-center">
+                    <MessageCircle className="h-16 w-16 text-gray-700 mx-auto mb-4" />
+                    <p className="text-gray-500 mb-2">No chat selected</p>
+                    <p className="text-sm text-gray-600">
+                      Select a conversation from the list to start chatting
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
