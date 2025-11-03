@@ -56,7 +56,11 @@ export function RegisterModal({ isOpen, onClose, onSwitchToLogin }: RegisterModa
     }
 
     setIsLoading(true)
+    setErrors({}) // Clear previous errors
+    
     try {
+      console.log('[RegisterModal] Attempting registration for:', formData.email)
+      
       // Create user in Supabase
       const response = await fetch('/api/auth/register', {
         method: 'POST',
@@ -71,18 +75,24 @@ export function RegisterModal({ isOpen, onClose, onSwitchToLogin }: RegisterModa
       })
 
       const data = await response.json()
+      console.log('[RegisterModal] Registration response:', { status: response.status, data })
 
       if (!response.ok) {
         // Show the specific error message from the server
         const errorMessage = data.error || t("auth.error")
-        throw new Error(errorMessage)
+        console.error('[RegisterModal] Registration failed:', errorMessage)
+        setErrors({ submit: errorMessage })
+        return
       }
 
+      console.log('[RegisterModal] Registration successful!')
+      
       // After successful registration, switch to login
       onSwitchToLogin()
     } catch (error) {
-      console.error("Registration error:", error)
-      setErrors({ submit: error instanceof Error ? error.message : t("auth.error") })
+      console.error("[RegisterModal] Registration exception:", error)
+      const errorMessage = error instanceof Error ? error.message : t("auth.error")
+      setErrors({ submit: errorMessage })
     } finally {
       setIsLoading(false)
     }

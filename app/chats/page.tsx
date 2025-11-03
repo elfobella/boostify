@@ -62,11 +62,26 @@ function ChatsListContent() {
       const response = await fetch('/api/chats/users')
       if (response.ok) {
         const data = await response.json()
-        setChats(data.chats || [])
+        
+        // Remove duplicate chats (same customer-booster pair)
+        // Keep only the most recently updated one for each pair
+        const uniqueChats = new Map<string, Chat>()
+        if (data.chats && data.chats.length > 0) {
+          data.chats.forEach((chat: Chat) => {
+            const key = `${chat.customer_id}-${chat.booster_id}`
+            const existing = uniqueChats.get(key)
+            if (!existing || new Date(chat.updated_at) > new Date(existing.updated_at)) {
+              uniqueChats.set(key, chat)
+            }
+          })
+        }
+        
+        const filteredChats = Array.from(uniqueChats.values())
+        setChats(filteredChats)
         
         // Auto-select first chat if available
-        if (data.chats && data.chats.length > 0 && !selectedChatId) {
-          setSelectedChatId(data.chats[0].id)
+        if (filteredChats.length > 0 && !selectedChatId) {
+          setSelectedChatId(filteredChats[0].id)
         }
       }
     } catch (error) {

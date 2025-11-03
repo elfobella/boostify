@@ -164,33 +164,107 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (session.user && token.sub) {
         session.user.id = token.sub
         session.user.role = token.role as string | undefined
+        console.log('[NextAuth][session] user:', {
+          id: session.user.id,
+          email: session.user.email,
+          role: session.user.role || 'undefined',
+        })
       }
       return session
     },
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id
-        token.email = user.email
+    async jwt({ token, user, trigger }) {
+      // On initial sign in or session update, fetch role from database
+      if (user || trigger === 'update') {
+        token.id = user?.id || token.id
+        token.email = user?.email || token.email
       }
       
-      // Fetch user role from database (on every request to keep it fresh)
-      if (token.email && !token.role) {
+      // Fetch role from DB when:
+      // 1. User just signed in (user object exists) - ALWAYS fetch on sign in
+      // 2. Token doesn't have a role yet - First time setup
+      // 3. Session is updated via updateSession() - For role changes without re-signing
+      if ((user || !token.role || trigger === 'update') && token.email) {
         const { supabaseAdmin } = await import("@/lib/supabase")
         if (supabaseAdmin) {
-          const { data: userData } = await supabaseAdmin
+          // Get all users with this email
+          const { data: allUsers, error: listError } = await supabaseAdmin
             .from('users')
-            .select('role')
+            .select('id, email, role, updated_at, created_at')
             .eq('email', token.email)
-            .single()
+            .order('updated_at', { ascending: false })
           
-          if (userData) {
-            token.role = userData.role || 'customer'
-          } else {
-            token.role = 'customer'
+          if (listError) {
+            console.error('[NextAuth][jwt] Error fetching users:', listError)
+            if (!token.role) {
+              token.role = 'customer'
+            }
+            return token
+          }
+
+          if (!allUsers || allUsers.length === 0) {
+            console.warn('[NextAuth][jwt] user not found in DB, defaulting role to customer. email:', token.email)
+            if (!token.role) {
+              token.role = 'customer'
+            }
+            return token
+          }
+
+          if (allUsers.length > 1) {
+            console.warn(`[NextAuth][jwt] WARNING: Found ${allUsers.length} users with email ${token.email}:`, 
+              allUsers.map(u => ({ 
+                id: u.id, 
+                role: u.role, 
+                updated_at: u.updated_at,
+                created_at: u.created_at
+              })))
+            
+            // Priority: booster > admin > customer
+            // If any user has booster role, use that
+            const boosterUser = allUsers.find(u => u.role === 'booster')
+            if (boosterUser) {
+              console.log(`[NextAuth][jwt] Found booster user among duplicates, using booster role from user_id: ${boosterUser.id}`)
+              token.role = 'booster'
+              return token
+            }
+            
+            const adminUser = allUsers.find(u => u.role === 'admin')
+            if (adminUser) {
+              console.log(`[NextAuth][jwt] Found admin user among duplicates, using admin role from user_id: ${adminUser.id}`)
+              token.role = 'admin'
+              return token
+            }
+          }
+
+          // Use the most recently updated user (or only user)
+          const userData = allUsers[0]
+          const previousRole = token.role
+          const newRole = userData.role || 'customer'
+          token.role = newRole
+          
+          console.log('[NextAuth][jwt] Role fetch details:', {
+            email: token.email,
+            previousRole: previousRole || 'none',
+            newRole: newRole,
+            userId: userData.id,
+            updatedAt: userData.updated_at,
+            totalUsers: allUsers.length,
+            trigger: trigger || 'none',
+            hasUser: !!user,
+            allRoles: allUsers.map(u => ({ id: u.id, role: u.role }))
+          })
+          
+          if (previousRole && previousRole !== newRole) {
+            console.log(`[NextAuth][jwt] 🔄 Role CHANGED: ${previousRole} → ${newRole} for email: ${token.email}`)
           }
         } else {
-          token.role = 'customer'
+          if (!token.role) {
+            token.role = 'customer'
+            console.error('[NextAuth][jwt] supabaseAdmin missing, defaulting role to customer')
+          }
         }
+      } else if (!token.role) {
+        // Fallback if no role is set
+        token.role = 'customer'
       }
       
       return token

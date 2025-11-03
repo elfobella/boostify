@@ -4,7 +4,7 @@ import { Suspense, useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import { Navbar } from "@/app/components/navbar"
 import { Footer } from "@/app/components/footer"
-import { User, Mail, Calendar, Shield, Settings, Package, CreditCard, LogOut, Clock, ArrowRight } from "lucide-react"
+import { User, Mail, Calendar, Shield, Settings, Package, CreditCard, LogOut, Clock, ArrowRight, CheckCircle, XCircle, Loader2 } from "lucide-react"
 import Image from "next/image"
 import { useLocaleContext } from "@/contexts"
 import { signOut } from "next-auth/react"
@@ -40,6 +40,8 @@ function ProfileContent() {
     activeServices: 0,
   })
   const [isLoadingOrders, setIsLoadingOrders] = useState(true)
+  const [approvingOrderId, setApprovingOrderId] = useState<string | null>(null)
+  const [rejectingOrderId, setRejectingOrderId] = useState<string | null>(null)
 
   useEffect(() => {
     if (session?.user) {
@@ -63,6 +65,58 @@ function ProfileContent() {
     }
   }
 
+  const handleApproveOrder = async (orderId: string) => {
+    setApprovingOrderId(orderId)
+    try {
+      const response = await fetch(`/api/orders/${orderId}/approve`, {
+        method: 'POST',
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        await fetchOrders()
+        alert('Order approved! Payment has been released.')
+      } else {
+        alert(data.error || 'Failed to approve order')
+      }
+    } catch (error) {
+      console.error('Error approving order:', error)
+      alert('Error approving order. Please try again.')
+    } finally {
+      setApprovingOrderId(null)
+    }
+  }
+
+  const handleRejectOrder = async (orderId: string) => {
+    const reason = prompt('Please provide a reason for rejecting this order:')
+    if (!reason) return
+
+    setRejectingOrderId(orderId)
+    try {
+      const response = await fetch(`/api/orders/${orderId}/reject`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ reason }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        await fetchOrders()
+        alert('Order rejected. Refund has been processed.')
+      } else {
+        alert(data.error || 'Failed to reject order')
+      }
+    } catch (error) {
+      console.error('Error rejecting order:', error)
+      alert('Error rejecting order. Please try again.')
+    } finally {
+      setRejectingOrderId(null)
+    }
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -70,6 +124,8 @@ function ProfileContent() {
         return 'text-green-400 bg-green-500/20'
       case 'processing':
         return 'text-blue-400 bg-blue-500/20'
+      case 'awaiting_review':
+        return 'text-purple-400 bg-purple-500/20'
       case 'pending':
         return 'text-yellow-400 bg-yellow-500/20'
       case 'cancelled':
@@ -85,6 +141,8 @@ function ProfileContent() {
         return 'Completed'
       case 'processing':
         return 'Processing'
+      case 'awaiting_review':
+        return 'Awaiting Your Review'
       case 'pending':
         return 'Pending'
       case 'cancelled':
@@ -305,7 +363,7 @@ function ProfileContent() {
                       
                       <div className="p-3">
                         {/* Mobile/Tablet Layout */}
-                        <div className="block md:hidden">
+                        <div className="block md:hidden space-y-2.5">
                           <div className="flex items-center justify-between gap-3">
                             <div className="flex items-center gap-2.5 flex-1 min-w-0">
                               <div className="p-2 bg-blue-500/20 rounded-lg flex-shrink-0">
@@ -333,6 +391,46 @@ function ProfileContent() {
                               </p>
                             </div>
                           </div>
+                          
+                          {/* Approve/Reject Buttons (only for awaiting_review orders) */}
+                          {order.status === 'awaiting_review' && (
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleApproveOrder(order.id)}
+                                disabled={approvingOrderId === order.id}
+                                className="flex-1 px-3 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-lg text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                              >
+                                {approvingOrderId === order.id ? (
+                                  <>
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    Approving...
+                                  </>
+                                ) : (
+                                  <>
+                                    <CheckCircle className="h-3.5 w-3.5" />
+                                    Approve
+                                  </>
+                                )}
+                              </button>
+                              <button
+                                onClick={() => handleRejectOrder(order.id)}
+                                disabled={rejectingOrderId === order.id}
+                                className="flex-1 px-3 py-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white rounded-lg text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                              >
+                                {rejectingOrderId === order.id ? (
+                                  <>
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    Rejecting...
+                                  </>
+                                ) : (
+                                  <>
+                                    <XCircle className="h-3.5 w-3.5" />
+                                    Reject
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          )}
                         </div>
 
                         {/* Desktop Layout */}
@@ -366,7 +464,7 @@ function ProfileContent() {
                               </div>
                             </div>
                           </div>
-                          <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                          <div className="flex flex-col items-end gap-3 flex-shrink-0">
                             <div className="text-right">
                               <p className="text-2xl font-bold text-blue-400">
                                 ${Number(order.amount).toFixed(2)}
@@ -374,6 +472,46 @@ function ProfileContent() {
                               <p className="text-xs text-gray-500">{order.currency.toUpperCase()}</p>
                             </div>
                             <p className="text-xs text-gray-500">{formatDate(order.created_at)}</p>
+                            
+                            {/* Approve/Reject Buttons (only for awaiting_review orders) */}
+                            {order.status === 'awaiting_review' && (
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleApproveOrder(order.id)}
+                                  disabled={approvingOrderId === order.id}
+                                  className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                >
+                                  {approvingOrderId === order.id ? (
+                                    <>
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                      Approving...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <CheckCircle className="h-4 w-4" />
+                                      Approve
+                                    </>
+                                  )}
+                                </button>
+                                <button
+                                  onClick={() => handleRejectOrder(order.id)}
+                                  disabled={rejectingOrderId === order.id}
+                                  className="px-4 py-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                >
+                                  {rejectingOrderId === order.id ? (
+                                    <>
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                      Rejecting...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <XCircle className="h-4 w-4" />
+                                      Reject
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>

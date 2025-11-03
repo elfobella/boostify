@@ -101,29 +101,84 @@ export async function POST(req: NextRequest) {
 
     console.log('[Orders API] ✅ Order claimed successfully:', updatedOrder.id)
 
-    // ✅ Order başarıyla claim edildi, şimdi chat oluştur
-    const { data: chat, error: chatError } = await supabaseAdmin
-      .from('chats')
+    // ✅ Create payment transaction record for escrow
+    const totalAmount = Number(updatedOrder.amount)
+    const platformFee = totalAmount * 0.5 // 50%
+    const boosterAmount = totalAmount * 0.5 // 50%
+
+    const { data: paymentTransaction, error: paymentError } = await supabaseAdmin
+      .from('payment_transactions')
       .insert({
         order_id: updatedOrder.id,
+        stripe_payment_intent_id: updatedOrder.payment_intent_id,
         customer_id: updatedOrder.user_id,
         booster_id: userData.id,
-        status: 'active',
+        total_amount: totalAmount,
+        platform_fee: platformFee,
+        booster_amount: boosterAmount,
+        currency: updatedOrder.currency || 'usd',
+        payment_status: 'captured',
       })
       .select()
       .single()
 
-    if (chatError) {
-      console.error('[Orders API] Failed to create chat:', chatError)
-      // Chat oluşturulamadı ama order claim edildi, warning log
+    if (paymentError) {
+      console.error('[Orders API] Failed to create payment transaction:', paymentError)
+      // Payment transaction failed but order claimed, log warning
     } else {
-      console.log('[Orders API] ✅ Chat created successfully:', chat.id)
-      
-      // İlk sistem mesajını oluştur
+      console.log('[Orders API] ✅ Payment transaction created:', paymentTransaction.id)
+    }
+
+    // ✅ Order başarıyla claim edildi, şimdi chat oluştur veya mevcut chat'i kullan
+    // Önce bu customer-booster arasında zaten bir chat var mı kontrol et
+    const { data: existingChat } = await supabaseAdmin
+      .from('chats')
+      .select('id')
+      .eq('customer_id', updatedOrder.user_id)
+      .eq('booster_id', userData.id)
+      .eq('status', 'active')
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    let chatId = null
+
+    if (existingChat) {
+      // Mevcut chat'i kullan, sadece updated_at'i güncelle
+      chatId = existingChat.id
+      await supabaseAdmin
+        .from('chats')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', existingChat.id)
+      console.log('[Orders API] ✅ Using existing chat:', existingChat.id)
+    } else {
+      // Yeni chat oluştur
+      const { data: chat, error: chatError } = await supabaseAdmin
+        .from('chats')
+        .insert({
+          order_id: updatedOrder.id,
+          customer_id: updatedOrder.user_id,
+          booster_id: userData.id,
+          status: 'active',
+        })
+        .select()
+        .single()
+
+      if (chatError) {
+        console.error('[Orders API] Failed to create chat:', chatError)
+        // Chat oluşturulamadı ama order claim edildi, warning log
+      } else {
+        chatId = chat.id
+        console.log('[Orders API] ✅ Chat created successfully:', chat.id)
+      }
+    }
+
+    // İlk sistem mesajını oluştur (chat varsa)
+    if (chatId) {
       await supabaseAdmin
         .from('messages')
         .insert({
-          chat_id: chat.id,
+          chat_id: chatId,
           sender_id: userData.id,
           content: `I've claimed your order. I'll start working on it soon!`,
           message_type: 'system',
@@ -140,7 +195,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       message: 'Order claimed successfully',
       order: updatedOrder,
-      chatId: chat?.id, // Frontend'e chat ID gönder
+      chatId: chatId, // Frontend'e chat ID gönder
     }, { status: 200 })
   } catch (error) {
     console.error('[Orders API] Exception:', error)

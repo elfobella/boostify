@@ -8,13 +8,24 @@ import Image from "next/image"
 import { useRouter } from "next/navigation"
 
 export function UserMenu() {
-  const { data: session } = useSession()
+  const { data: session, update: updateSession } = useSession()
   const { t } = useLocaleContext()
   const [isOpen, setIsOpen] = React.useState(false)
   const [unreadCount, setUnreadCount] = React.useState(0)
   const router = useRouter()
   
   const userRole = session?.user?.role || 'customer'
+  
+  // Log session info (no auto-refresh to avoid loops)
+  React.useEffect(() => {
+    if (session?.user) {
+      console.log('[UserMenu] session user:', {
+        id: session.user.id,
+        email: session.user.email,
+        role: session.user.role || 'undefined',
+      })
+    }
+  }, [session?.user?.id, session?.user?.email, session?.user?.role])
 
   React.useEffect(() => {
     if (session?.user) {
@@ -29,9 +40,13 @@ export function UserMenu() {
         const data = await response.json()
         // TODO: Calculate unread messages count
         setUnreadCount(0)
+      } else {
+        // Endpoint might be unavailable in some environments; ignore
+        setUnreadCount(0)
+        console.warn('[UserMenu] /api/chats/users responded with status:', response.status)
       }
     } catch (error) {
-      console.error('Error fetching unread count:', error)
+      console.error('[UserMenu] Error fetching unread count:', error)
     }
   }
 

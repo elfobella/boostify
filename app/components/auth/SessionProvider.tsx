@@ -6,8 +6,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   return (
     <NextAuthSessionProvider 
       basePath="/api/auth"
-      refetchInterval={5 * 60}
-      refetchOnWindowFocus={true}
+      refetchInterval={5 * 60} // Refetch session every 5 minutes
+      refetchOnWindowFocus={true} // Refetch when window gets focus
     >
       {children}
     </NextAuthSessionProvider>

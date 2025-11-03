@@ -2,9 +2,10 @@
 
 import { Suspense, useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
 import { Navbar } from "@/app/components/navbar"
 import { Footer } from "@/app/components/footer"
-import { Package, CreditCard, CheckCircle, Clock, TrendingUp, AlertCircle, Loader2 } from "lucide-react"
+import { Package, CreditCard, CheckCircle, Clock, TrendingUp, AlertCircle, Loader2, ExternalLink } from "lucide-react"
 import { useLocaleContext } from "@/contexts"
 import { ProfileSkeleton } from "@/app/components/ui"
 
@@ -33,6 +34,7 @@ interface BoosterStats {
 function BoosterDashboardContent() {
   const { data: session, status } = useSession()
   const { t } = useLocaleContext()
+  const router = useRouter()
   const [availableOrders, setAvailableOrders] = useState<Order[]>([])
   const [myOrders, setMyOrders] = useState<Order[]>([])
   const [stats, setStats] = useState<BoosterStats>({
@@ -45,13 +47,83 @@ function BoosterDashboardContent() {
   const [isLoadingMyOrders, setIsLoadingMyOrders] = useState(true)
   const [activeTab, setActiveTab] = useState<'available' | 'my-orders'>('available')
   const [claimingOrderId, setClaimingOrderId] = useState<string | null>(null)
+  const [completingOrderId, setCompletingOrderId] = useState<string | null>(null)
+  
+  // Stripe Connect onboarding state
+  const [connectStatus, setConnectStatus] = useState<{
+    hasAccount: boolean
+    onboardingComplete: boolean
+    readyToAccept: boolean
+    status: string
+  } | null>(null)
+  const [isLoadingConnect, setIsLoadingConnect] = useState(true)
+  const [isCreatingAccount, setIsCreatingAccount] = useState(false)
+  const [isGettingLink, setIsGettingLink] = useState(false)
 
   useEffect(() => {
     if (session?.user) {
       fetchAvailableOrders()
       fetchMyOrders()
+      fetchConnectStatus()
     }
   }, [session])
+
+  const fetchConnectStatus = async () => {
+    setIsLoadingConnect(true)
+    try {
+      const response = await fetch('/api/boosters/connect/status')
+      if (response.ok) {
+        const data = await response.json()
+        setConnectStatus(data)
+      }
+    } catch (error) {
+      console.error('Error fetching Connect status:', error)
+    } finally {
+      setIsLoadingConnect(false)
+    }
+  }
+
+  const handleCreateAccount = async () => {
+    setIsCreatingAccount(true)
+    try {
+      const response = await fetch('/api/boosters/connect/create-account', {
+        method: 'POST',
+      })
+      if (response.ok) {
+        await fetchConnectStatus()
+      } else {
+        const error = await response.json()
+        alert(error.error || 'Failed to create account')
+      }
+    } catch (error) {
+      console.error('Error creating account:', error)
+      alert('Failed to create account')
+    } finally {
+      setIsCreatingAccount(false)
+    }
+  }
+
+  const handleGetOnboardingLink = async () => {
+    setIsGettingLink(true)
+    try {
+      const response = await fetch('/api/boosters/connect/onboard-link', {
+        method: 'POST',
+      })
+      if (response.ok) {
+        const data = await response.json()
+        // Open Stripe onboarding in new tab
+        window.open(data.url, '_blank')
+      } else {
+        const error = await response.json()
+        alert(error.error || 'Failed to generate onboarding link')
+      }
+    } catch (error) {
+      console.error('Error getting onboarding link:', error)
+      alert('Failed to generate onboarding link')
+    } finally {
+      setIsGettingLink(false)
+    }
+  }
 
   const fetchAvailableOrders = async () => {
     setIsLoadingAvailable(true)
@@ -123,6 +195,32 @@ function BoosterDashboardContent() {
     }
   }
 
+  const handleCompleteOrder = async (orderId: string) => {
+    setCompletingOrderId(orderId)
+    try {
+      const response = await fetch(`/api/orders/${orderId}/complete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        // Refresh orders
+        await fetchMyOrders()
+        alert('Order marked as complete! Waiting for customer approval.')
+      } else {
+        alert(data.error || 'Failed to complete order')
+      }
+    } catch (error) {
+      console.error('Error completing order:', error)
+      alert('Error completing order. Please try again.')
+    } finally {
+      setCompletingOrderId(null)
+    }
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -130,6 +228,8 @@ function BoosterDashboardContent() {
         return 'text-green-400 bg-green-500/20'
       case 'processing':
         return 'text-blue-400 bg-blue-500/20'
+      case 'awaiting_review':
+        return 'text-purple-400 bg-purple-500/20'
       case 'pending':
         return 'text-yellow-400 bg-yellow-500/20'
       case 'cancelled':
@@ -145,6 +245,8 @@ function BoosterDashboardContent() {
         return 'Completed'
       case 'processing':
         return 'Processing'
+      case 'awaiting_review':
+        return 'Awaiting Review'
       case 'pending':
         return 'Pending'
       case 'cancelled':
@@ -211,6 +313,65 @@ function BoosterDashboardContent() {
               <h1 className="text-4xl font-bold text-gray-100 mb-2">Booster Dashboard</h1>
               <p className="text-gray-400">Manage and claim available orders</p>
             </div>
+
+            {/* Stripe Connect Onboarding Banner */}
+            {!isLoadingConnect && connectStatus && !connectStatus.readyToAccept && (
+              <div className="mb-8 bg-gradient-to-r from-yellow-950/50 to-orange-950/50 border border-yellow-500/30 rounded-xl p-6">
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0">
+                    <AlertCircle className="h-6 w-6 text-yellow-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-gray-100 mb-2">
+                      {!connectStatus.hasAccount 
+                        ? 'Setup Payment Account Required'
+                        : 'Complete Payment Setup'}
+                    </h3>
+                    <p className="text-gray-300 mb-4">
+                      {!connectStatus.hasAccount
+                        ? 'You need to setup your Stripe Connect account to start receiving automatic payments. Click below to get started.'
+                        : 'Complete your Stripe onboarding to start receiving orders automatically.'}
+                    </p>
+                    <div className="flex gap-3">
+                      {!connectStatus.hasAccount ? (
+                        <button
+                          onClick={handleCreateAccount}
+                          disabled={isCreatingAccount}
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                        >
+                          {isCreatingAccount ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Creating...
+                            </>
+                          ) : (
+                            'Create Stripe Account'
+                          )}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={handleGetOnboardingLink}
+                          disabled={isGettingLink}
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                        >
+                          {isGettingLink ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Loading...
+                            </>
+                          ) : (
+                            <>
+                              Complete Onboarding
+                              <ExternalLink className="h-4 w-4" />
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -442,7 +603,7 @@ function BoosterDashboardContent() {
                           
                           <div className="p-3">
                             {/* Mobile/Tablet Layout */}
-                            <div className="block md:hidden">
+                            <div className="block md:hidden space-y-2.5">
                               <div className="flex items-center justify-between gap-3">
                                 <div className="flex items-center gap-2.5 flex-1 min-w-0">
                                   <div className="p-2 bg-blue-500/20 rounded-lg flex-shrink-0">
@@ -470,6 +631,27 @@ function BoosterDashboardContent() {
                                   </p>
                                 </div>
                               </div>
+                              
+                              {/* Mark Complete Button (only for processing orders) */}
+                              {order.status === 'processing' && (
+                                <button
+                                  onClick={() => handleCompleteOrder(order.id)}
+                                  disabled={completingOrderId === order.id}
+                                  className="w-full px-3 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-lg text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                >
+                                  {completingOrderId === order.id ? (
+                                    <>
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                      Completing...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <CheckCircle className="h-3.5 w-3.5" />
+                                      Mark as Complete
+                                    </>
+                                  )}
+                                </button>
+                              )}
                             </div>
 
                             {/* Desktop Layout */}
@@ -508,7 +690,7 @@ function BoosterDashboardContent() {
                                   </div>
                                 </div>
                               </div>
-                              <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                              <div className="flex flex-col items-end gap-3 flex-shrink-0">
                                 <div className="text-right">
                                   <p className="text-2xl font-bold text-blue-400">
                                     ${Number(order.amount).toFixed(2)}
@@ -516,6 +698,27 @@ function BoosterDashboardContent() {
                                   <p className="text-xs text-gray-500">{order.currency.toUpperCase()}</p>
                                 </div>
                                 <p className="text-xs text-gray-500">{formatDate(order.created_at)}</p>
+                                
+                                {/* Mark Complete Button (only for processing orders) */}
+                                {order.status === 'processing' && (
+                                  <button
+                                    onClick={() => handleCompleteOrder(order.id)}
+                                    disabled={completingOrderId === order.id}
+                                    className="px-6 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                  >
+                                    {completingOrderId === order.id ? (
+                                      <>
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Completing...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <CheckCircle className="h-4 w-4" />
+                                        Mark Complete
+                                      </>
+                                    )}
+                                  </button>
+                                )}
                               </div>
                             </div>
                           </div>

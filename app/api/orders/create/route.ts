@@ -57,8 +57,15 @@ export async function POST(req: NextRequest) {
 
     // Extract order data from metadata
     const metadata = paymentIntent.metadata || {}
+    
+    // If booster_id in metadata (from Connect flow), set status to processing
+    // Otherwise keep as pending for legacy claim flow
+    const boosterId = metadata.booster_id || null
+    const orderStatus = boosterId ? 'processing' : 'pending'
+    
     const orderData = {
       user_id: userId,
+      booster_id: boosterId,
       payment_intent_id: paymentIntentId,
       game: metadata.game || 'clash-royale',
       service_category: metadata.service_category || '',
@@ -68,7 +75,7 @@ export async function POST(req: NextRequest) {
       amount: paymentIntent.amount / 100, // Convert from cents to dollars
       currency: paymentIntent.currency,
       estimated_time: metadata.estimated_time || null,
-      status: 'pending',
+      status: orderStatus,
     }
 
     console.log('[Orders API] Order data:', orderData)
@@ -112,6 +119,13 @@ export async function POST(req: NextRequest) {
     }
 
     console.log('[Orders API] ✅ Order created successfully:', newOrder.id)
+
+    // Update order payment_status to 'captured' since payment succeeded
+    await supabaseAdmin
+      .from('orders')
+      .update({ payment_status: 'captured' })
+      .eq('id', newOrder.id)
+
     return NextResponse.json(
       { message: 'Order created successfully', orderId: newOrder.id, order: newOrder },
       { status: 201 }

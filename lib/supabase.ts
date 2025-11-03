@@ -244,10 +244,11 @@ export async function createUserWithPassword(userData: {
     })
 
     if (authError) {
-      console.error('[Supabase] Error creating auth user:', {
+      console.error('[Supabase] ❌ Error creating auth user:', {
         message: authError.message,
         status: authError.status,
         name: authError.name,
+        fullError: JSON.stringify(authError, null, 2),
       })
       
       // Check for invalid API key error
@@ -256,19 +257,25 @@ export async function createUserWithPassword(userData: {
           authError.message?.toLowerCase().includes('invalid') ||
           authError.status === 401 ||
           authError.status === 403) {
+        const envServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
         console.error('[Supabase] Invalid API key detected - check SUPABASE_SERVICE_ROLE_KEY')
-        console.error('[Supabase] Service key length:', supabaseServiceKey.length)
-        console.error('[Supabase] Service key starts with:', supabaseServiceKey.substring(0, 20))
-        console.error('[Supabase] Service key ends with:', supabaseServiceKey.substring(Math.max(0, supabaseServiceKey.length - 20)))
+        console.error('[Supabase] Error details:', {
+          message: authError.message,
+          status: authError.status,
+          name: authError.name,
+        })
+        console.error('[Supabase] Service key length:', envServiceKey.length)
+        console.error('[Supabase] Service key starts with:', envServiceKey.substring(0, 20))
+        console.error('[Supabase] Service key ends with:', envServiceKey.substring(Math.max(0, envServiceKey.length - 20)))
         
         // Check if key looks truncated
-        if (supabaseServiceKey.length < 200) {
+        if (envServiceKey.length < 200) {
           console.error('[Supabase] WARNING: Service key seems too short! Should be 250+ characters')
         }
         
         // Try to decode JWT to verify
         try {
-          const parts = supabaseServiceKey.split('.')
+          const parts = envServiceKey.split('.')
           if (parts.length === 3) {
             const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString())
             console.error('[Supabase] Key role:', payload.role)
@@ -280,7 +287,7 @@ export async function createUserWithPassword(userData: {
           console.error('[Supabase] Could not decode JWT - key format might be invalid')
         }
         
-        return { success: false, error: 'Server configuration error. Invalid API key. Please check Vercel environment variables.' }
+        return { success: false, error: 'Server configuration error. Invalid API key. Please check environment variables.' }
       }
       
       // Check if it's a duplicate email error

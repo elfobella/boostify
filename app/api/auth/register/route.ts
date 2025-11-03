@@ -50,11 +50,17 @@ export async function POST(request: Request) {
     }
 
     // Check if email already exists in our users table (more efficient than listing all auth users)
-    const { data: existingUser } = await supabaseAdmin
+    const { data: existingUser, error: checkError } = await supabaseAdmin
       .from('users')
       .select('email')
       .eq('email', email)
-      .single()
+      .maybeSingle() // Use maybeSingle() instead of single() to avoid throwing on no results
+    
+    if (checkError) {
+      console.error('[Register API] Error checking existing user:', checkError)
+      // Don't fail registration if check fails, continue with creation attempt
+      // Supabase Auth will catch duplicates anyway
+    }
     
     if (existingUser) {
       console.error('[Register API] Email already registered in users table:', email)
@@ -102,9 +108,17 @@ export async function POST(request: Request) {
       { status: 201 }
     )
   } catch (error) {
-    console.error("[Register API] Exception:", error)
+    console.error("[Register API] ❌ Unhandled exception:", error)
+    if (error instanceof Error) {
+      console.error("[Register API] Error name:", error.name)
+      console.error("[Register API] Error message:", error.message)
+      console.error("[Register API] Error stack:", error.stack)
+    }
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
+      { 
+        error: error instanceof Error ? error.message : "Internal server error",
+        details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : String(error)) : undefined
+      },
       { status: 500 }
     )
   }
