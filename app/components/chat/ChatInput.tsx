@@ -33,31 +33,31 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
   }
 
   return (
-    <div className="border-t border-gray-800 p-4">
+    <div className="border-t border-gray-800 p-3 md:p-4 flex-shrink-0">
       <form onSubmit={handleSubmit} className="flex gap-2">
         <input
           type="text"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Type a message..."
-          className="flex-1 bg-zinc-800 border border-gray-700 rounded-lg px-4 py-2 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 bg-zinc-800 border border-gray-700 rounded-lg px-3 py-2 md:px-4 md:py-2 text-sm md:text-base text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
           disabled={isSending || disabled}
           maxLength={1000}
         />
         <button
           type="submit"
           disabled={!message.trim() || isSending || disabled}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center min-w-[100px]"
+          className="px-3 py-2 md:px-4 md:py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center justify-center min-w-[50px] md:min-w-[100px]"
         >
           {isSending ? (
             <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Sending...
+              <Loader2 className="w-4 h-4 md:mr-2 animate-spin" />
+              <span className="hidden md:inline">Sending...</span>
             </>
           ) : (
             <>
-              <Send className="w-4 h-4 mr-2" />
-              Send
+              <Send className="w-4 h-4 md:mr-2" />
+              <span className="hidden md:inline">Send</span>
             </>
           )}
         </button>
