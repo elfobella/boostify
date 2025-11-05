@@ -16,7 +16,7 @@ const stripe = new Stripe(stripeSecretKey, {
 export async function POST(req: NextRequest) {
   try {
     const session = await auth()
-    if (!session?.user?.email) {
+    if (!session?.user?.id && !session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -28,13 +28,33 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { data: userData, error: userError } = await supabaseAdmin
-      .from('users')
-      .select('id, stripe_connect_account_id')
-      .eq('email', session.user.email)
-      .single()
+    // Get user from database - prefer ID over email
+    let userData = null
+    let userError = null
+
+    if (session.user.id) {
+      const result = await supabaseAdmin
+        .from('users')
+        .select('id, stripe_connect_account_id')
+        .eq('id', session.user.id)
+        .single()
+      userData = result.data
+      userError = result.error
+    }
+
+    // Fallback to email if ID lookup failed or ID not available
+    if (!userData && session.user.email) {
+      const result = await supabaseAdmin
+        .from('users')
+        .select('id, stripe_connect_account_id')
+        .eq('email', session.user.email)
+        .single()
+      userData = result.data
+      userError = result.error
+    }
 
     if (userError || !userData) {
+      console.error('[Connect] User not found:', userError)
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }

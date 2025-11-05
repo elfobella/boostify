@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { NavItems } from "./NavItems"
 import { LocaleCurrencySelector } from "../locale"
 import { AuthButton, UserMenu } from "../auth"
@@ -18,9 +19,16 @@ export function Navbar() {
       <div className="container flex h-16 items-center justify-between px-4">
         <Link
           href="/"
-          className="flex items-center space-x-2 font-bold text-lg md:text-2xl bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent flex-shrink-0"
+          className="flex items-center space-x-2 flex-shrink-0"
         >
-          <span>Boostify</span>
+          <Image
+            src="/logo.png"
+            alt="Atlas Boost"
+            width={120}
+            height={40}
+            className="h-12 w-auto md:h-14"
+            priority
+          />
         </Link>
 
         <NavItems />

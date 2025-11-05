@@ -40,15 +40,51 @@ export const supabase = (supabaseUrl && supabaseAnonKey)
   : null
 
 // Server-side Supabase client (for API routes, with service role key for admin operations)
+// Service role key automatically bypasses RLS in Supabase
 export const supabaseAdmin: SupabaseClient | null = (supabaseUrl && supabaseServiceKey)
   ? (() => {
       try {
-        return createClient(supabaseUrl, supabaseServiceKey, {
+        // Service role key bypasses RLS automatically
+        // No need for special configuration - just use the service role key
+        const client = createClient(supabaseUrl, supabaseServiceKey, {
           auth: {
             autoRefreshToken: false,
-            persistSession: false
+            persistSession: false,
+            // Service role doesn't need user session
+            detectSessionInUrl: false
+          },
+          global: {
+            // Ensure we're using service role context
+            headers: {
+              'apikey': supabaseServiceKey,
+              'Authorization': `Bearer ${supabaseServiceKey}`
+            }
           }
         })
+        
+        // Verify service role key format
+        if (supabaseServiceKey && !supabaseServiceKey.startsWith('eyJ')) {
+          console.warn('[Supabase] Service key may be invalid - should start with "eyJ"')
+        } else if (supabaseServiceKey) {
+          // Try to decode JWT to verify it's a service role key
+          try {
+            const parts = supabaseServiceKey.split('.')
+            if (parts.length === 3) {
+              const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString())
+              if (payload.role !== 'service_role') {
+                console.error('[Supabase] ⚠️ WARNING: Key role is not "service_role"! Found:', payload.role)
+                console.error('[Supabase] This will cause RLS policy failures. Check your SUPABASE_SERVICE_ROLE_KEY.')
+              } else {
+                console.log('[Supabase] ✅ Service role key verified')
+              }
+            }
+          } catch (e) {
+            // JWT decode failed - might still be valid, just log warning
+            console.warn('[Supabase] Could not verify service role key format')
+          }
+        }
+        
+        return client
       } catch (error) {
         console.error('[Supabase] Failed to create admin client:', error)
         return null
@@ -315,25 +351,67 @@ export async function createUserWithPassword(userData: {
 
     // Now create user record in our users table
     console.log('[Supabase] Creating user record in users table')
+    console.log('[Supabase] Using supabaseAdmin client (service role)')
+    
+    // Verify service role is being used
+    if (!supabaseAdmin) {
+      return { 
+        success: false, 
+        error: 'Server configuration error. Admin client not available.' 
+      }
+    }
+    
+    const insertData = {
+      email: userData.email.trim().toLowerCase(),
+      name: userData.name,
+      provider: 'email',
+      provider_id: authUser.user.id,
+      last_login: new Date().toISOString(),
+    }
+    
+    console.log('[Supabase] Insert data:', { ...insertData, email: '***' })
+    
     const { data: newUser, error: createError } = await supabaseAdmin
       .from('users')
-      .insert({
-        email: userData.email,
-        name: userData.name,
-        provider: 'email',
-        provider_id: authUser.user.id,
-        last_login: new Date().toISOString(),
-      })
+      .insert(insertData)
       .select()
       .single()
 
     if (createError) {
-      console.error('[Supabase] Error creating user record:', {
+      console.error('[Supabase] ❌ Error creating user record:', {
         message: createError.message,
         details: createError.details,
         hint: createError.hint,
         code: createError.code,
+        insertData: { ...insertData, email: '***' },
       })
+      
+      // Check if it's an RLS error
+      if (createError.code === '42501') {
+        console.error('[Supabase] RLS Policy Error - Service role may not have permission')
+        console.error('[Supabase] Please run the migration: supabase/migrations/fix_users_rls_policies.sql')
+        console.error('[Supabase] Or run this in Supabase SQL Editor:')
+        console.error(`
+          DROP POLICY IF EXISTS "Service role full access" ON users;
+          CREATE POLICY "Service role full access" ON users
+            FOR ALL
+            USING (auth.role() = 'service_role')
+            WITH CHECK (auth.role() = 'service_role');
+        `)
+        
+        // If user record creation fails, try to delete the auth user to keep consistency
+        try {
+          await supabaseAdmin.auth.admin.deleteUser(authUser.user.id)
+          console.log('[Supabase] Cleaned up auth user due to RLS policy error')
+        } catch (deleteError) {
+          console.error('[Supabase] Error cleaning up auth user:', deleteError)
+        }
+        
+        return { 
+          success: false, 
+          error: 'Registration failed due to server configuration. Please contact support.' 
+        }
+      }
       
       // If user record creation fails, try to delete the auth user to keep consistency
       try {
@@ -382,18 +460,21 @@ export async function verifyUserPassword(email: string, password: string) {
       return null
     }
 
-    // Update last_login in users table
-    const { data: updatedUser, error: updateError } = await supabaseAdmin
+    // Update last_login in users table (if user exists)
+    // Don't fail authentication if this update fails
+    const { error: updateError } = await supabaseAdmin
       .from('users')
       .update({
         last_login: new Date().toISOString(),
       })
       .eq('email', email)
-      .select()
-      .single()
 
     if (updateError) {
-      console.error('Error updating last_login:', updateError)
+      // Log but don't fail - this is not critical for authentication
+      // PGRST116 means user not found, which is OK - they might be created later
+      if (updateError.code !== 'PGRST116') {
+        console.error('Error updating last_login:', updateError)
+      }
     }
 
     return authData.user

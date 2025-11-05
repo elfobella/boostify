@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { FooterLinks } from "./FooterLinks"
 import { useLocaleContext } from "@/contexts"
 
@@ -15,14 +16,20 @@ export function Footer() {
         <div className="mt-12 pt-8 border-t border-gray-800">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-sm opacity-60 text-center md:text-left">
-              © {currentYear} Boostify. {t("footer.copyright")}.
+              © {currentYear} Atlas Boost. {t("footer.copyright")}.
             </p>
             <div className="flex items-center gap-4">
               <Link
                 href="/"
-                className="text-sm font-semibold bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent"
+                className="flex items-center"
               >
-                Boostify
+                <Image
+                  src="/logo.png"
+                  alt="Atlas Boost"
+                  width={100}
+                  height={33}
+                  className="h-10 w-auto"
+                />
               </Link>
             </div>
           </div>

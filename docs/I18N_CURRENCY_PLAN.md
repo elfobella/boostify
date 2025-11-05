@@ -74,7 +74,7 @@ boostify/
     "subtitle": "Rank boosting and progression services for your favorite games"
   },
   "reliability": {
-    "title": "Why Boostify?",
+    "title": "Why Atlas Boost?",
     "subtitle": "Secure, fast and guaranteed boosting service with professional players"
   }
 }
@@ -100,7 +100,7 @@ boostify/
     "subtitle": "Favori oyunlarınızda sıralama yükseltme ve ilerleme hizmetleri"
   },
   "reliability": {
-    "title": "Neden Boostify?",
+    "title": "Neden Atlas Boost?",
     "subtitle": "Profesyonel oyuncularımızla güvenli, hızlı ve garantili boosting hizmeti"
   }
 }

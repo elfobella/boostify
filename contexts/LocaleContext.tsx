@@ -36,7 +36,7 @@ const translations = {
       pubgMobileDesc: "Boosting services coming soon"
     },
     reliability: {
-      title: "Why Boostify?",
+      title: "Why Atlas Boost?",
       subtitle: "Secure, fast and guaranteed boosting service with professional players",
       fastCompletionTitle: "Fast Completion",
       fastCompletionDesc: "Get your order completed in the shortest time",
@@ -163,7 +163,7 @@ const translations = {
       pubgMobileDesc: "Boosting hizmetleri yakında"
     },
     reliability: {
-      title: "Neden Boostify?",
+      title: "Neden Atlas Boost?",
       subtitle: "Profesyonel oyuncularımızla güvenli, hızlı ve garantili boosting hizmeti",
       fastCompletionTitle: "Hızlı Tamamlama",
       fastCompletionDesc: "Siparişinizin en kısa sürede tamamlanması",

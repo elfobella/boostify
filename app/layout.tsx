@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Boostify",
+  title: "Atlas Boost",
   description: "Modern Next.js application with dark mode",
 };
 

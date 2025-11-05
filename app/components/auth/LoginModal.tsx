@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Image from "next/image"
 import { X } from "lucide-react"
 import { signIn } from "next-auth/react"
 import { useLocaleContext } from "@/contexts"
@@ -121,10 +122,17 @@ export function LoginModal({ isOpen, onClose, onSwitchToRegister }: LoginModalPr
         <div className="p-6">
           <div className="space-y-5">
           {/* Header */}
-            <div className="text-center space-y-1.5">
-              <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent">
-              Boostify
-            </h2>
+            <div className="text-center space-y-3">
+              <div className="flex justify-center">
+                <Image
+                  src="/logo.png"
+                  alt="Atlas Boost"
+                  width={120}
+                  height={40}
+                  className="h-14 w-auto"
+                  priority
+                />
+              </div>
               <p className="text-gray-400 text-base">
               {t("auth.welcomeBack")}
             </p>

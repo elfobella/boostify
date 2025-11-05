@@ -16,7 +16,7 @@ const stripe = new Stripe(stripeSecretKey, {
 export async function POST(req: NextRequest) {
   try {
     const session = await auth()
-    if (!session?.user?.email) {
+    if (!session?.user?.id && !session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -28,12 +28,30 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Get user from database
-    const { data: userData, error: userError } = await supabaseAdmin
-      .from('users')
-      .select('id, email, name, role, stripe_connect_account_id, onboarding_complete')
-      .eq('email', session.user.email)
-      .single()
+    // Get user from database - prefer ID over email
+    let userData = null
+    let userError = null
+
+    if (session.user.id) {
+      const result = await supabaseAdmin
+        .from('users')
+        .select('id, email, name, role, stripe_connect_account_id, onboarding_complete')
+        .eq('id', session.user.id)
+        .single()
+      userData = result.data
+      userError = result.error
+    }
+
+    // Fallback to email if ID lookup failed or ID not available
+    if (!userData && session.user.email) {
+      const result = await supabaseAdmin
+        .from('users')
+        .select('id, email, name, role, stripe_connect_account_id, onboarding_complete')
+        .eq('email', session.user.email)
+        .single()
+      userData = result.data
+      userError = result.error
+    }
 
     if (userError || !userData) {
       console.error('[Connect] User not found:', userError)
@@ -97,8 +115,26 @@ export async function POST(req: NextRequest) {
     })
   } catch (error: any) {
     console.error('[Connect] Error creating account:', error)
+    
+    // Check if Connect is not enabled
+    if (error.message?.includes('Connect') || error.code === 'account_invalid') {
+      return NextResponse.json(
+        { 
+          error: 'Stripe Connect is not enabled for this platform. Please enable Connect in your Stripe Dashboard: https://dashboard.stripe.com/connect/overview',
+          details: error.message,
+          code: error.code,
+          help: 'See docs/STRIPE_CONNECT_SETUP.md for setup instructions'
+        },
+        { status: 400 }
+      )
+    }
+    
     return NextResponse.json(
-      { error: error.message || 'Failed to create Connect account' },
+      { 
+        error: error.message || 'Failed to create Connect account',
+        details: error.type || 'unknown_error',
+        code: error.code
+      },
       { status: 500 }
     )
   }

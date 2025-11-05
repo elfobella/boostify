@@ -93,11 +93,24 @@ function BoosterDashboardContent() {
         await fetchConnectStatus()
       } else {
         const error = await response.json()
-        alert(error.error || 'Failed to create account')
+        // Show more helpful error message
+        if (error.error?.includes('Connect is not enabled')) {
+          alert(
+            `Stripe Connect Setup Required\n\n` +
+            `Stripe Connect is not enabled for this platform.\n\n` +
+            `Please:\n` +
+            `1. Go to https://dashboard.stripe.com/connect/overview\n` +
+            `2. Enable Connect for your platform\n` +
+            `3. Then try again\n\n` +
+            `See docs/STRIPE_CONNECT_SETUP.md for details.`
+          )
+        } else {
+          alert(error.error || 'Failed to create account')
+        }
       }
     } catch (error) {
       console.error('Error creating account:', error)
-      alert('Failed to create account')
+      alert('Failed to create account. Please check the console for details.')
     } finally {
       setIsCreatingAccount(false)
     }
