@@ -10,7 +10,7 @@ export function Footer() {
   const { t } = useLocaleContext()
 
   return (
-    <footer className="border-t border-gray-800 bg-zinc-950 relative z-0">
+    <footer className="border-t border-gray-800 bg-zinc-950 relative z-0" style={{ zIndex: 0, isolation: 'isolate' }}>
       <div className="container px-4 py-12 md:py-16">
         <FooterLinks />
         <div className="mt-12 pt-8 border-t border-gray-800">

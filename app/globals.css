@@ -34,9 +34,49 @@ footer *,
 footer a,
 footer div,
 footer ul,
-footer li {
+footer li,
+[class*="Footer"],
+[class*="footer"] {
   position: relative !important;
   z-index: 0 !important;
+  isolation: isolate !important;
+}
+
+/* Ensure payment modal is always on top - Safari fix */
+div[class*="PaymentModal"],
+div[style*="z-index: 999999"],
+div[style*="zIndex: 999999"],
+[data-payment-modal],
+[data-payment-modal] > * {
+  z-index: 999999 !important;
+  position: fixed !important;
+  isolation: isolate !important;
+}
+
+/* Ensure modal backdrop is below modal but above everything else */
+div[style*="z-index: 999998"],
+[data-payment-modal] > div:first-child {
+  z-index: 999998 !important;
+  position: absolute !important;
+}
+
+/* Ensure modal content is above backdrop */
+[data-payment-modal] > div:last-child,
+[data-payment-modal] > div:nth-child(2) {
+  z-index: 999999 !important;
+  position: relative !important;
+}
+
+/* Safari specific fix - force footer below */
+@supports (-webkit-touch-callout: none) {
+  footer {
+    z-index: 0 !important;
+    position: relative !important;
+  }
+  
+  [data-payment-modal] {
+    z-index: 2147483647 !important; /* Max z-index for Safari */
+  }
 }
 
 /* Ensure payment modal header stays on top */

@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { X } from "lucide-react"
+import { createPortal } from "react-dom"
+import { X, Tag, Check, XCircle, Loader2 } from "lucide-react"
 import { Elements } from "@stripe/react-stripe-js"
 import { stripePromise } from "@/lib/stripe"
 import { StripeCheckout } from "./StripeCheckout"
@@ -27,14 +28,121 @@ interface PaymentModalProps {
 export function PaymentModal({ isOpen, onClose, amount, onSuccess, orderData, estimatedTime }: PaymentModalProps) {
   const [clientSecret, setClientSecret] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [couponCode, setCouponCode] = useState('')
+  const [discountAmount, setDiscountAmount] = useState(0)
+  const [finalAmount, setFinalAmount] = useState(amount)
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false)
+  const [couponStatus, setCouponStatus] = useState<'idle' | 'valid' | 'invalid'>('idle')
+  const [couponError, setCouponError] = useState<string | null>(null)
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(null)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+    return () => setMounted(false)
+  }, [])
 
   useEffect(() => {
     if (isOpen && amount > 0) {
-      createPaymentIntent()
+      // Reset coupon state when modal opens
+      setCouponCode('')
+      setDiscountAmount(0)
+      setFinalAmount(amount)
+      setCouponStatus('idle')
+      setCouponError(null)
+      setAppliedCoupon(null)
+      createPaymentIntent(amount)
     }
   }, [isOpen, amount])
 
-  const createPaymentIntent = async () => {
+  const validateCoupon = async (code: string) => {
+    if (!code.trim()) {
+      setCouponStatus('idle')
+      setDiscountAmount(0)
+      setFinalAmount(amount)
+      setCouponError(null)
+      setAppliedCoupon(null)
+      // Recreate payment intent with original amount
+      createPaymentIntent(amount)
+      return
+    }
+
+    setIsValidatingCoupon(true)
+    setCouponError(null)
+
+    try {
+      const response = await fetch('/api/coupons/validate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          code: code.trim(),
+          amount: amount,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.valid) {
+        setCouponStatus('valid')
+        setDiscountAmount(data.discountAmount)
+        setFinalAmount(data.finalAmount)
+        setCouponError(null)
+        setAppliedCoupon(data.coupon)
+        // Recreate payment intent with discounted amount
+        createPaymentIntent(data.finalAmount, code.trim())
+      } else {
+        setCouponStatus('invalid')
+        setCouponError(data.error || 'Invalid coupon code')
+        setDiscountAmount(0)
+        setFinalAmount(amount)
+        setAppliedCoupon(null)
+        // Recreate payment intent with original amount
+        createPaymentIntent(amount)
+      }
+    } catch (error) {
+      console.error('Error validating coupon:', error)
+      setCouponStatus('invalid')
+      setCouponError('Failed to validate coupon')
+      setDiscountAmount(0)
+      setFinalAmount(amount)
+      setAppliedCoupon(null)
+      createPaymentIntent(amount)
+    } finally {
+      setIsValidatingCoupon(false)
+    }
+  }
+
+  useEffect(() => {
+    if (couponCode.trim()) {
+      const timeoutId = setTimeout(() => {
+        validateCoupon(couponCode)
+      }, 500)
+      return () => clearTimeout(timeoutId)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [couponCode])
+
+  const handleCouponCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const code = e.target.value
+    setCouponCode(code)
+    if (!code.trim()) {
+      validateCoupon('')
+    }
+  }
+
+  const handleCouponSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    validateCoupon(couponCode)
+  }
+
+  const removeCoupon = () => {
+    setCouponCode('')
+    validateCoupon('')
+  }
+
+  const createPaymentIntent = async (paymentAmount: number, couponCodeParam?: string) => {
     setIsLoading(true)
     try {
       const response = await fetch('/api/create-payment-intent', {
@@ -43,10 +151,11 @@ export function PaymentModal({ isOpen, onClose, amount, onSuccess, orderData, es
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          amount: amount,
+          amount: paymentAmount,
           currency: 'usd',
           orderData: orderData,
           estimatedTime: estimatedTime,
+          couponCode: couponCodeParam || couponCode || undefined,
         }),
       })
 
@@ -59,24 +168,43 @@ export function PaymentModal({ isOpen, onClose, amount, onSuccess, orderData, es
     }
   }
 
-  if (!isOpen) return null
+  if (!isOpen || !mounted) return null
 
   const handleSuccess = () => {
     onSuccess()
     onClose()
   }
 
-  return (
-    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4" style={{ zIndex: 99999, position: 'fixed' }}>
+  const modalContent = (
+    <div 
+      className="fixed inset-0 flex items-center justify-center p-4" 
+      data-payment-modal="true"
+      style={{ 
+        zIndex: 2147483647, // Max z-index for Safari compatibility
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        isolation: 'isolate',
+      }}
+    >
       {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
-        style={{ zIndex: 99998 }}
+        style={{ zIndex: 999998 }}
       />
       
       {/* Modal */}
-      <div className="relative bg-zinc-900 rounded-2xl shadow-2xl border border-gray-800 w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden" style={{ zIndex: 99999 }}>
+      <div 
+        className="relative bg-zinc-900 rounded-2xl shadow-2xl border border-gray-800 w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden" 
+        style={{ 
+          zIndex: 2147483647, // Max z-index for Safari compatibility
+          position: 'relative',
+          isolation: 'isolate',
+        }}
+      >
         {/* Header */}
         <div className="p-6 md:p-8 pb-4 flex-shrink-0 border-b border-gray-800 relative z-50 bg-zinc-900">
           {/* Close Button */}
@@ -100,6 +228,91 @@ export function PaymentModal({ isOpen, onClose, amount, onSuccess, orderData, es
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto px-6 md:px-8 py-6 md:py-8 custom-scrollbar relative z-0" style={{ isolation: 'isolate' }}>
+          {/* Coupon Code Section */}
+          <div className="mb-6 space-y-3">
+            <form onSubmit={handleCouponSubmit} className="space-y-2">
+              <label htmlFor="coupon-code" className="text-sm font-medium text-gray-300 flex items-center gap-2">
+                <Tag className="h-4 w-4" />
+                Coupon Code
+              </label>
+              <div className="flex gap-2">
+                <div className="flex-1 relative">
+                  <input
+                    id="coupon-code"
+                    type="text"
+                    value={couponCode}
+                    onChange={handleCouponCodeChange}
+                    onBlur={() => validateCoupon(couponCode)}
+                    placeholder="Enter coupon code"
+                    className="w-full px-4 py-2.5 bg-zinc-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    disabled={isValidatingCoupon || isLoading}
+                  />
+                  {isValidatingCoupon && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                    </div>
+                  )}
+                  {couponStatus === 'valid' && !isValidatingCoupon && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <Check className="h-4 w-4 text-green-500" />
+                    </div>
+                  )}
+                  {couponStatus === 'invalid' && !isValidatingCoupon && couponCode && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <XCircle className="h-4 w-4 text-red-500" />
+                    </div>
+                  )}
+                </div>
+                {couponStatus === 'valid' && appliedCoupon && (
+                  <button
+                    type="button"
+                    onClick={removeCoupon}
+                    className="px-4 py-2.5 text-sm font-medium text-red-400 hover:text-red-300 transition-colors"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+              {couponError && (
+                <p className="text-sm text-red-400">{couponError}</p>
+              )}
+              {couponStatus === 'valid' && appliedCoupon && (
+                <div className="flex items-center justify-between p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                  <div>
+                    <p className="text-sm font-medium text-green-400">
+                      {appliedCoupon.discountType === 'percentage' 
+                        ? `${appliedCoupon.discountValue}% off` 
+                        : `$${appliedCoupon.discountValue} off`}
+                    </p>
+                    {appliedCoupon.description && (
+                      <p className="text-xs text-gray-400 mt-0.5">{appliedCoupon.description}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </form>
+
+            {/* Price Summary */}
+            <div className="pt-3 border-t border-gray-800 space-y-2">
+              <div className="flex justify-between text-sm text-gray-400">
+                <span>Subtotal</span>
+                <span>${amount.toFixed(2)}</span>
+              </div>
+              {discountAmount > 0 && (
+                <div className="flex justify-between text-sm text-green-400">
+                  <span>Discount</span>
+                  <span>-${discountAmount.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-lg font-bold text-white pt-2 border-t border-gray-800">
+                <span>Total</span>
+                <span className="bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent">
+                  ${finalAmount.toFixed(2)}
+                </span>
+              </div>
+            </div>
+          </div>
+
           {isLoading ? (
             <PaymentModalSkeleton />
           ) : clientSecret ? (
@@ -111,9 +324,17 @@ export function PaymentModal({ isOpen, onClose, amount, onSuccess, orderData, es
                   theme: 'night',
                   variables: {
                     colorPrimary: '#2563eb',
+                    colorBackground: '#18181b', // zinc-900
+                    colorText: '#f4f4f5', // zinc-100
+                    colorDanger: '#ef4444',
+                    fontFamily: 'system-ui, sans-serif',
+                    spacingUnit: '4px',
+                    borderRadius: '8px',
                   },
                 },
                 loader: 'auto',
+                // Note: Do NOT specify paymentMethodTypes - let automatic_payment_methods handle it
+                // Link payment method warning is expected in test mode if not activated
               }}
             >
               <StripeCheckout 
@@ -121,6 +342,8 @@ export function PaymentModal({ isOpen, onClose, amount, onSuccess, orderData, es
                 onSuccess={handleSuccess}
                 onCancel={onClose}
                 paymentIntentId={clientSecret ? clientSecret.split('_secret_')[0] : null}
+                amount={finalAmount}
+                currency="usd"
               />
             </Elements>
           ) : (
@@ -132,4 +355,6 @@ export function PaymentModal({ isOpen, onClose, amount, onSuccess, orderData, es
       </div>
     </div>
   )
+
+  return createPortal(modalContent, document.body)
 }

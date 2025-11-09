@@ -14,13 +14,52 @@ const stripe = new Stripe(stripeSecretKey, {
 
 export async function POST(req: NextRequest) {
   try {
-    const { amount, currency = 'usd', orderData, estimatedTime, boosterId } = await req.json()
+    const { amount, currency = 'usd', orderData, estimatedTime, boosterId, couponCode } = await req.json()
 
     if (!amount || amount <= 0) {
       return NextResponse.json(
         { error: 'Invalid amount' },
         { status: 400 }
       )
+    }
+
+    // Validate and apply coupon if provided (do this first to calculate finalAmount)
+    let finalAmount = amount
+    let discountAmount = 0
+    let couponData = null
+
+    if (couponCode) {
+      try {
+        const couponResponse = await fetch(`${req.nextUrl.origin}/api/coupons/validate`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            code: couponCode.trim(),
+            amount: amount,
+          }),
+        })
+
+        const couponResult = await couponResponse.json()
+
+        if (couponResult.valid) {
+          discountAmount = couponResult.discountAmount
+          finalAmount = couponResult.finalAmount
+          couponData = couponResult.coupon
+          console.log('[PaymentIntent] Coupon applied:', {
+            code: couponCode,
+            discountAmount,
+            finalAmount,
+          })
+        } else {
+          console.warn('[PaymentIntent] Invalid coupon code:', couponCode)
+          // Continue with original amount if coupon is invalid
+        }
+      } catch (error) {
+        console.error('[PaymentIntent] Error validating coupon:', error)
+        // Continue with original amount if validation fails
+      }
     }
 
     // If boosterId provided, validate and get Connect account for split payment
@@ -75,8 +114,8 @@ export async function POST(req: NextRequest) {
         )
       }
 
-      // Calculate split: 50% to booster, 50% to platform
-      const totalAmount = Math.round(amount * 100)
+      // Calculate split: 50% to booster, 50% to platform (based on final amount after coupon)
+      const totalAmount = Math.round(finalAmount * 100)
       applicationFeeAmount = Math.floor(totalAmount * 0.5) // Platform fee
       
       transferData = {
@@ -103,15 +142,25 @@ export async function POST(req: NextRequest) {
     if (estimatedTime) {
       metadata.estimated_time = estimatedTime
     }
+    if (couponCode && couponData) {
+      metadata.coupon_code = couponCode.trim().toUpperCase()
+      metadata.discount_amount = discountAmount.toString()
+    }
 
     // Create PaymentIntent with optional Connect split
+    // IMPORTANT: Do NOT specify payment_method_types when using automatic_payment_methods
+    // This allows Apple Pay, Google Pay, Link, and other wallet methods to be available
     const paymentIntentData: any = {
-      amount: Math.round(amount * 100), // Convert to cents
+      amount: Math.round(finalAmount * 100), // Convert to cents (use finalAmount after coupon discount)
       currency: currency,
       automatic_payment_methods: {
         enabled: true,
+        allow_redirects: 'always', // Enable Apple Pay, Google Pay, and other redirect-based payment methods
       },
       metadata: metadata,
+      // Do NOT add payment_method_types - this would restrict available methods
+      // Do NOT add payment_method_configuration - use default Stripe account settings
+      // Note: Google Pay requires automatic_payment_methods.enabled: true
     }
 
     // Add Connect split if booster provided
@@ -125,15 +174,58 @@ export async function POST(req: NextRequest) {
 
     const paymentIntent = await stripe.paymentIntents.create(paymentIntentData)
 
+    // Verify payment intent supports wallet methods
+    const paymentMethodTypes = paymentIntent.payment_method_types || []
+    const hasAutomaticMethods = paymentIntent.automatic_payment_methods?.enabled === true
+    
+    // Check if Google Pay is explicitly available in PaymentIntent
+    const availablePaymentMethodTypes = paymentIntent.payment_method_options || {}
+    const googlePayAvailable = hasAutomaticMethods || 
+                               paymentMethodTypes.includes('google_pay') ||
+                               paymentMethodTypes.includes('card') // Google Pay uses card payment method
+
     console.log('💰 Payment Intent created:', {
       id: paymentIntent.id,
       amount: paymentIntent.amount,
+      originalAmount: amount,
+      discountAmount,
+      finalAmount,
       currency: paymentIntent.currency,
-      status: paymentIntent.status
+      status: paymentIntent.status,
+      couponCode: couponCode || null,
+      paymentMethodTypes,
+      automaticPaymentMethods: hasAutomaticMethods,
+      allowRedirects: paymentIntent.automatic_payment_methods?.allow_redirects,
+      paymentMethodOptions: availablePaymentMethodTypes,
+      allowsApplePay: hasAutomaticMethods || paymentMethodTypes.includes('apple_pay'),
+      allowsGooglePay: googlePayAvailable,
+      troubleshooting: {
+        ifGooglePayNotShowing: [
+          '1. Check Stripe Dashboard → Settings → Payment methods → Google Pay is ENABLED in TEST MODE',
+          '2. Ensure you are using TEST mode keys (pk_test_...) for localhost',
+          '3. Verify Google Pay is enabled for your account region (Settings → Payment methods → Google Pay → Region settings)',
+          '4. Check that PaymentIntent has automatic_payment_methods.enabled: true',
+          '5. Ensure browser is Chrome/Edge Chromium (not Safari/Firefox)',
+          '6. Check browser console for Stripe.js warnings about Google Pay',
+        ],
+      },
     })
+
+    // Verify configuration supports wallet methods
+    if (!hasAutomaticMethods) {
+      console.warn('[PaymentIntent] ⚠️ Automatic payment methods not enabled. Apple Pay/Google Pay may not work.')
+    }
+    
+    if (!googlePayAvailable) {
+      console.warn('[PaymentIntent] ⚠️ Google Pay may not be available. Check Stripe Dashboard → Settings → Payment methods → Google Pay')
+    }
 
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,
+      couponApplied: !!couponData,
+      discountAmount,
+      finalAmount,
+      paymentIntentId: paymentIntent.id,
     })
   } catch (error: any) {
     console.error('Error creating payment intent:', error)

@@ -5,9 +5,23 @@ import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Navbar } from "@/app/components/navbar"
 import { Footer } from "@/app/components/footer"
-import { Package, CreditCard, CheckCircle, Clock, TrendingUp, AlertCircle, Loader2, ExternalLink } from "lucide-react"
+import { Package, CreditCard, CheckCircle, Clock, TrendingUp, AlertCircle, Loader2, ExternalLink, Mail, Star } from "lucide-react"
 import { useLocaleContext } from "@/contexts"
 import { ProfileSkeleton } from "@/app/components/ui"
+
+interface CustomerProfile {
+  id: string
+  name: string | null
+  email: string | null
+  image: string | null
+}
+
+interface OrderFeedback {
+  rating: number | null
+  comment: string | null
+  created_at: string | null
+  customer_id: string | null
+}
 
 interface Order {
   id: string
@@ -22,6 +36,8 @@ interface Order {
   created_at: string
   claimed_at?: string
   estimated_time?: string
+  customer_profile?: CustomerProfile | null
+  feedback?: OrderFeedback | null
 }
 
 interface BoosterStats {
@@ -29,6 +45,8 @@ interface BoosterStats {
   completedOrders: number
   activeOrders: number
   totalEarnings: number
+  averageRating?: number | null
+  totalFeedbacks?: number
 }
 
 function BoosterDashboardContent() {
@@ -42,6 +60,8 @@ function BoosterDashboardContent() {
     completedOrders: 0,
     activeOrders: 0,
     totalEarnings: 0,
+    averageRating: null,
+    totalFeedbacks: 0,
   })
   const [isLoadingAvailable, setIsLoadingAvailable] = useState(true)
   const [isLoadingMyOrders, setIsLoadingMyOrders] = useState(true)
@@ -289,6 +309,55 @@ function BoosterDashboardContent() {
     return categoryMap[category] || category
   }
 
+  const renderFeedbackBadge = (feedback: OrderFeedback | null) => {
+    if (!feedback) return null
+    const ratingValue = typeof feedback.rating === 'number' ? Number(feedback.rating) : null
+    const hasComment = typeof feedback.comment === 'string' && feedback.comment.trim().length > 0
+
+    if (!ratingValue && !hasComment) {
+      return null
+    }
+
+    return (
+      <div className="mt-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5">
+            {Array.from({ length: 5 }).map((_, index) => {
+              const starValue = index + 1
+              const isActive = ratingValue !== null && starValue <= ratingValue
+              return (
+                <Star
+                  key={starValue}
+                  className={`h-3.5 w-3.5 ${isActive ? 'text-yellow-300' : 'text-emerald-500/50'}`}
+                  fill={isActive ? 'currentColor' : 'none'}
+                />
+              )
+            })}
+            {ratingValue !== null && (
+              <span className="text-xs font-semibold text-emerald-100">
+                {ratingValue.toFixed(1)}
+              </span>
+            )}
+          </div>
+          {feedback.created_at && (
+            <span className="text-[10px] text-emerald-200/70">
+              {new Date(feedback.created_at).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+              })}
+            </span>
+          )}
+        </div>
+        {hasComment && (
+          <p className="mt-2 text-xs text-emerald-100/90 leading-relaxed">
+            “{feedback.comment?.trim()}”
+          </p>
+        )}
+      </div>
+    )
+  }
+
   if (status === "loading") {
     return (
       <>
@@ -418,6 +487,19 @@ function BoosterDashboardContent() {
                   <span className="text-3xl font-bold text-purple-400">${stats.totalEarnings.toFixed(2)}</span>
                 </div>
                 <h3 className="text-gray-400 text-sm font-medium">Total Earnings</h3>
+                {(typeof stats.averageRating === 'number' || (stats.totalFeedbacks ?? 0) > 0) && (
+                  <div className="mt-4 flex items-center gap-2 text-sm">
+                    <div className="flex items-center gap-1 text-yellow-300">
+                      <Star className="h-4 w-4" />
+                      <span className="font-semibold">
+                        {typeof stats.averageRating === 'number' ? stats.averageRating.toFixed(1) : '—'}
+                      </span>
+                    </div>
+                    <span className="text-xs text-gray-400">
+                      ({stats.totalFeedbacks ?? 0} {stats.totalFeedbacks === 1 ? 'review' : 'reviews'})
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -493,6 +575,24 @@ function BoosterDashboardContent() {
                                       <span className="text-gray-600">•</span>
                                       <span>{order.current_level} → {order.target_level}</span>
                                     </div>
+                                    {order.customer_profile && (
+                                      <div className="mt-2 flex flex-col gap-1 text-xs text-gray-400">
+                                        <div className="flex items-center gap-2">
+                                          <span className="font-medium text-gray-300">Customer:</span>
+                                          <span className="truncate">
+                                            {order.customer_profile.name || 'Unnamed customer'}
+                                          </span>
+                                        </div>
+                                        {order.customer_profile.email && (
+                                          <div className="flex items-center gap-1.5">
+                                            <Mail className="h-3 w-3 text-gray-500" />
+                                            <span className="truncate text-[11px] text-gray-500">
+                                              {order.customer_profile.email}
+                                            </span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                                 <div className="text-right flex-shrink-0">
@@ -665,6 +765,8 @@ function BoosterDashboardContent() {
                                   )}
                                 </button>
                               )}
+
+                              {renderFeedbackBadge(order.feedback ?? null)}
                             </div>
 
                             {/* Desktop Layout */}
@@ -694,6 +796,27 @@ function BoosterDashboardContent() {
                                         <Clock className="h-3.5 w-3.5 flex-shrink-0" />
                                         <span>{order.estimated_time}</span>
                                       </p>
+                                    )}
+                                    {order.customer_profile && (
+                                      <div className="col-span-2 flex items-center gap-3 text-xs text-gray-400">
+                                        <div className="flex items-center gap-2">
+                                          <span className="font-medium text-gray-300">Customer:</span>
+                                          <span className="truncate">
+                                            {order.customer_profile.name || 'Unnamed customer'}
+                                          </span>
+                                        </div>
+                                        {order.customer_profile.email && (
+                                          <>
+                                            <span className="text-gray-600">•</span>
+                                            <div className="flex items-center gap-1.5">
+                                              <Mail className="h-3 w-3 text-gray-500" />
+                                              <span className="text-[11px] text-gray-500">
+                                                {order.customer_profile.email}
+                                              </span>
+                                            </div>
+                                          </>
+                                        )}
+                                      </div>
                                     )}
                                     {order.claimed_at && (
                                       <p className="text-xs text-green-400 col-span-2">
@@ -732,6 +855,8 @@ function BoosterDashboardContent() {
                                     )}
                                   </button>
                                 )}
+
+                                {renderFeedbackBadge(order.feedback ?? null)}
                               </div>
                             </div>
                           </div>

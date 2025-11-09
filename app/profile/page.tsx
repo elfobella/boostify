@@ -4,11 +4,34 @@ import { Suspense, useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import { Navbar } from "@/app/components/navbar"
 import { Footer } from "@/app/components/footer"
-import { User, Mail, Calendar, Shield, Settings, Package, CreditCard, LogOut, Clock, ArrowRight, CheckCircle, XCircle, Loader2 } from "lucide-react"
+import { User, Mail, Calendar, Shield, Settings, Package, CreditCard, LogOut, Clock, CheckCircle, XCircle, Loader2, Star, MessageCircle, UserCircle2 } from "lucide-react"
 import Image from "next/image"
+import Link from "next/link"
 import { useLocaleContext } from "@/contexts"
 import { signOut } from "next-auth/react"
 import { ProfileSkeleton } from "@/app/components/ui"
+
+interface BoosterProfile {
+  id: string
+  name: string | null
+  image: string | null
+}
+
+interface BoosterFeedback {
+  id: string
+  order_id: string
+  booster_id: string
+  customer_id: string
+  rating: number | null
+  comment: string | null
+  created_at: string
+  updated_at: string
+}
+
+interface BoosterFeedbackSummary {
+  averageRating: number | null
+  totalFeedbacks: number
+}
 
 interface Order {
   id: string
@@ -22,6 +45,10 @@ interface Order {
   status: string
   created_at: string
   estimated_time?: string
+  booster_id?: string | null
+  booster_profile?: BoosterProfile | null
+  feedback?: BoosterFeedback | null
+  booster_feedback_summary?: BoosterFeedbackSummary | null
 }
 
 interface OrderStats {
@@ -42,6 +69,12 @@ function ProfileContent() {
   const [isLoadingOrders, setIsLoadingOrders] = useState(true)
   const [approvingOrderId, setApprovingOrderId] = useState<string | null>(null)
   const [rejectingOrderId, setRejectingOrderId] = useState<string | null>(null)
+  const [feedbackOrder, setFeedbackOrder] = useState<Order | null>(null)
+  const [feedbackRating, setFeedbackRating] = useState<number | null>(null)
+  const [hoverRating, setHoverRating] = useState<number | null>(null)
+  const [feedbackComment, setFeedbackComment] = useState("")
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false)
+  const [feedbackError, setFeedbackError] = useState<string | null>(null)
 
   useEffect(() => {
     if (session?.user) {
@@ -205,6 +238,151 @@ function ProfileContent() {
     await signOut({ callbackUrl: "/" })
   }
 
+  const handleOpenFeedbackModal = (order: Order) => {
+    setFeedbackOrder(order)
+    setFeedbackRating(order.feedback?.rating ?? null)
+    setHoverRating(null)
+    setFeedbackComment(order.feedback?.comment ?? "")
+    setFeedbackError(null)
+  }
+
+  const handleCloseFeedbackModal = () => {
+    setFeedbackOrder(null)
+    setFeedbackRating(null)
+    setHoverRating(null)
+    setFeedbackComment("")
+    setFeedbackError(null)
+    setIsSubmittingFeedback(false)
+  }
+
+  const handleSubmitFeedback = async () => {
+    if (!feedbackOrder) return
+
+    const trimmedComment = feedbackComment.trim()
+
+    if ((feedbackRating === null || feedbackRating === undefined) && trimmedComment.length === 0) {
+      setFeedbackError("Please provide a rating or a comment.")
+      return
+    }
+
+    try {
+      setIsSubmittingFeedback(true)
+      setFeedbackError(null)
+
+      const isUpdating = Boolean(feedbackOrder.feedback)
+
+      const response = await fetch(`/api/orders/${feedbackOrder.id}/feedback`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          rating: feedbackRating,
+          comment: trimmedComment.length > 0 ? trimmedComment : null,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        await fetchOrders()
+        alert(isUpdating ? 'Feedback updated. Thank you!' : 'Thank you for sharing your feedback!')
+        handleCloseFeedbackModal()
+      } else {
+        setFeedbackError(data.error || 'Failed to submit feedback. Please try again.')
+      }
+    } catch (error) {
+      console.error('Error submitting feedback:', error)
+      setFeedbackError('An unexpected error occurred. Please try again.')
+    } finally {
+      setIsSubmittingFeedback(false)
+    }
+  }
+
+  const renderFeedbackSummary = (order: Order) => {
+    if (!order.feedback) return null
+
+    const ratingValue = order.feedback.rating ?? 0
+
+    return (
+      <div className="rounded-xl border border-gray-800/70 bg-zinc-900/70 px-3 py-2">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 text-xs text-gray-200">
+            {Array.from({ length: 5 }).map((_, index) => {
+              const starValue = index + 1
+              return (
+                <Star
+                  key={starValue}
+                  className={`h-3.5 w-3.5 ${starValue <= ratingValue ? 'text-yellow-300' : 'text-gray-600'}`}
+                  fill={starValue <= ratingValue ? 'currentColor' : 'none'}
+                />
+              )
+            })}
+            {ratingValue > 0 && <span className="font-semibold text-gray-100">{ratingValue.toFixed(1)}</span>}
+          </div>
+          <button
+            onClick={() => handleOpenFeedbackModal(order)}
+            className="rounded-full border border-gray-700 px-2.5 py-1 text-[11px] font-medium text-gray-300 transition-colors hover:border-gray-500 hover:text-gray-100"
+          >
+            Edit
+          </button>
+        </div>
+        {order.feedback.comment && (
+          <div className="mt-2 flex items-start gap-2 text-xs text-gray-300">
+            <MessageCircle className="mt-0.5 h-3.5 w-3.5 text-gray-500" />
+            <p className="whitespace-pre-line leading-relaxed">{order.feedback.comment}</p>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  const renderBoosterAssignment = (order: Order) => {
+    if (!order.booster_profile) return null
+
+    const ratingValue = order.booster_feedback_summary?.averageRating ?? null
+    const totalFeedbacks = order.booster_feedback_summary?.totalFeedbacks ?? 0
+
+    return (
+      <div className="flex items-center justify-between gap-3 rounded-lg border border-gray-800/70 bg-zinc-900/70 px-3 py-2">
+        <div className="flex items-center gap-2.5">
+          {order.booster_profile.image ? (
+            <Image
+              src={order.booster_profile.image}
+              alt={order.booster_profile.name || 'Booster'}
+              width={32}
+              height={32}
+              className="rounded-full border border-blue-400/40 object-cover"
+            />
+          ) : (
+            <div className="flex h-8 w-8 items-center justify-center rounded-full border border-blue-400/30 bg-blue-500/10">
+              <UserCircle2 className="h-[18px] w-[18px] text-blue-200" />
+            </div>
+          )}
+          <div className="flex flex-col">
+            <span className="text-[11px] uppercase tracking-wide text-blue-200/60">Booster</span>
+            <span className="text-sm font-medium text-blue-100">
+              {order.booster_profile.name || 'Unnamed Booster'}
+            </span>
+            {totalFeedbacks > 0 && (
+              <span className="flex items-center gap-1 text-[11px] text-blue-200/70">
+                <Star className="h-3 w-3 text-yellow-300" />
+                {ratingValue ? ratingValue.toFixed(1) : 'New'}
+                <span className="text-blue-200/50">· {totalFeedbacks}</span>
+              </span>
+            )}
+          </div>
+        </div>
+        <Link
+          href={`/boosters/${order.booster_profile.id}`}
+          className="rounded-full border border-gray-700 px-2.5 py-1 text-[11px] font-medium text-gray-300 transition-colors hover:border-gray-500 hover:text-gray-100"
+        >
+          Profile
+        </Link>
+      </div>
+    )
+  }
+
   return (
     <div className="flex min-h-screen flex-col">
       <Navbar />
@@ -352,62 +530,101 @@ function ProfileContent() {
                   <p className="text-sm text-gray-600">{t("profile.ordersDescription")}</p>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  {orders.map((order) => (
-                    <div
-                      key={order.id}
-                      className="relative bg-gradient-to-br from-zinc-800/80 to-zinc-900/50 border border-gray-700/50 hover:border-blue-500/50 transition-all duration-200 rounded-lg overflow-hidden group"
-                    >
-                      {/* Gradient accent */}
-                      <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-blue-600 to-cyan-600 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      
-                      <div className="p-3">
-                        {/* Mobile/Tablet Layout */}
-                        <div className="block md:hidden space-y-2.5">
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                              <div className="p-2 bg-blue-500/20 rounded-lg flex-shrink-0">
-                                <Package className="h-4 w-4 text-blue-400" />
+                <div className="space-y-4">
+                  {orders.map((order) => {
+                    const isAwaitingReview = order.status === 'awaiting_review'
+                    const isCompletedWithBooster = order.status === 'completed' && !!order.booster_id
+
+                    return (
+                      <div
+                        key={order.id}
+                        className="rounded-2xl border border-gray-800 bg-zinc-900/70 p-5 transition-colors hover:border-blue-500/40"
+                      >
+                        <div className="flex flex-col gap-4">
+                          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                            <div className="space-y-1.5">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h3 className="text-lg font-semibold text-gray-100">
+                                  {getCategoryDisplay(order.service_category)}
+                                </h3>
+                                <span
+                                  className={`inline-flex items-center gap-1 rounded-full border border-white/5 px-2.5 py-0.5 text-[11px] font-semibold ${getStatusColor(order.status)}`}
+                                >
+                                  {getStatusText(order.status)}
+                                </span>
                               </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <h3 className="text-sm font-semibold text-gray-100 truncate">
-                                    {getCategoryDisplay(order.service_category)}
-                                  </h3>
-                                  <span className={`px-1.5 py-0.5 rounded text-xs font-medium flex-shrink-0 ${getStatusColor(order.status)}`}>
-                                    {getStatusText(order.status)}
+                              <div className="flex flex-wrap gap-2 text-[11px] text-gray-400">
+                                <span className="inline-flex items-center gap-1 rounded border border-gray-800 px-2 py-1">
+                                  <span className="font-medium text-gray-300">Account:</span> {order.game_account}
+                                </span>
+                                <span className="inline-flex items-center gap-1 rounded border border-gray-800 px-2 py-1">
+                                  <span className="font-medium text-gray-300">Progress:</span> {order.current_level} → {order.target_level}
+                                </span>
+                                {order.estimated_time && (
+                                  <span className="inline-flex items-center gap-1 rounded border border-gray-800 px-2 py-1">
+                                    <Clock className="h-3 w-3 text-gray-500" />
+                                    {order.estimated_time}
                                   </span>
-                                </div>
-                                <div className="flex items-center gap-3 text-xs text-gray-400">
-                                  <span className="truncate">{order.game_account}</span>
-                                  <span className="text-gray-600">•</span>
-                                  <span>{order.current_level} → {order.target_level}</span>
-                                </div>
+                                )}
+                                <span className="inline-flex items-center gap-1 rounded border border-gray-800 px-2 py-1">
+                                  Placed {formatDate(order.created_at)}
+                                </span>
                               </div>
                             </div>
-                            <div className="text-right flex-shrink-0">
-                              <p className="text-lg font-bold text-blue-400">
+
+                            <div className="flex flex-col items-start gap-1 text-left md:items-end md:text-right">
+                              <span className="text-xl font-semibold text-blue-200">
                                 ${Number(order.amount).toFixed(2)}
-                              </p>
+                              </span>
+                              <span className="text-[11px] uppercase tracking-wide text-gray-500">
+                                {order.currency.toUpperCase()}
+                              </span>
                             </div>
                           </div>
-                          
-                          {/* Approve/Reject Buttons (only for awaiting_review orders) */}
-                          {order.status === 'awaiting_review' && (
-                            <div className="flex gap-2">
+
+                          <div className="grid gap-3 md:grid-cols-2">
+                            {order.booster_profile
+                              ? renderBoosterAssignment(order)
+                              : (
+                                <div className="rounded-lg border border-gray-800 px-3 py-2 text-xs text-gray-400">
+                                  Waiting for booster assignment.
+                                </div>
+                                )}
+
+                            {isCompletedWithBooster ? (
+                              order.feedback ? (
+                                renderFeedbackSummary(order)
+                              ) : (
+                                <button
+                                  onClick={() => handleOpenFeedbackModal(order)}
+                                  className="flex items-center justify-center gap-2 rounded-lg border border-blue-500/30 px-3 py-2 text-xs font-semibold text-blue-100 transition hover:border-blue-400"
+                                >
+                                  <Star className="h-4 w-4" />
+                                  Leave Feedback
+                                </button>
+                              )
+                            ) : isAwaitingReview ? (
+                              <div className="rounded-lg border border-emerald-500/20 px-3 py-2 text-xs text-emerald-100/90">
+                                Please review the completed boost. Approve if everything looks good or reject with a note for help.
+                              </div>
+                            ) : null}
+                          </div>
+
+                          {isAwaitingReview && (
+                            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-end">
                               <button
                                 onClick={() => handleApproveOrder(order.id)}
                                 disabled={approvingOrderId === order.id}
-                                className="flex-1 px-3 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-lg text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
                               >
                                 {approvingOrderId === order.id ? (
                                   <>
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    <Loader2 className="h-4 w-4 animate-spin" />
                                     Approving...
                                   </>
                                 ) : (
                                   <>
-                                    <CheckCircle className="h-3.5 w-3.5" />
+                                    <CheckCircle className="h-4 w-4" />
                                     Approve
                                   </>
                                 )}
@@ -415,16 +632,16 @@ function ProfileContent() {
                               <button
                                 onClick={() => handleRejectOrder(order.id)}
                                 disabled={rejectingOrderId === order.id}
-                                className="flex-1 px-3 py-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white rounded-lg text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                className="inline-flex items-center justify-center gap-2 rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-60"
                               >
                                 {rejectingOrderId === order.id ? (
                                   <>
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    <Loader2 className="h-4 w-4 animate-spin" />
                                     Rejecting...
                                   </>
                                 ) : (
                                   <>
-                                    <XCircle className="h-3.5 w-3.5" />
+                                    <XCircle className="h-4 w-4" />
                                     Reject
                                   </>
                                 )}
@@ -432,91 +649,9 @@ function ProfileContent() {
                             </div>
                           )}
                         </div>
-
-                        {/* Desktop Layout */}
-                        <div className="hidden md:flex items-center justify-between gap-6">
-                          <div className="flex items-center gap-4 flex-1 min-w-0">
-                            <div className="p-3 bg-blue-500/20 rounded-lg flex-shrink-0">
-                              <Package className="h-6 w-6 text-blue-400" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-3 mb-2">
-                                <h3 className="text-lg font-semibold text-gray-100 truncate">
-                                  {getCategoryDisplay(order.service_category)}
-                                </h3>
-                                <span className={`px-2.5 py-1 rounded-md text-xs font-medium flex-shrink-0 ${getStatusColor(order.status)}`}>
-                                  {getStatusText(order.status)}
-                                </span>
-                              </div>
-                              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-gray-400">
-                                <p className="truncate">
-                                  <span className="font-medium text-gray-300">Account:</span> {order.game_account}
-                                </p>
-                                <p>
-                                  <span className="font-medium text-gray-300">Progress:</span> {order.current_level} → {order.target_level}
-                                </p>
-                                {order.estimated_time && (
-                                  <p className="flex items-center gap-2 col-span-2">
-                                    <Clock className="h-3.5 w-3.5 flex-shrink-0" />
-                                    <span>{order.estimated_time}</span>
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex flex-col items-end gap-3 flex-shrink-0">
-                            <div className="text-right">
-                              <p className="text-2xl font-bold text-blue-400">
-                                ${Number(order.amount).toFixed(2)}
-                              </p>
-                              <p className="text-xs text-gray-500">{order.currency.toUpperCase()}</p>
-                            </div>
-                            <p className="text-xs text-gray-500">{formatDate(order.created_at)}</p>
-                            
-                            {/* Approve/Reject Buttons (only for awaiting_review orders) */}
-                            {order.status === 'awaiting_review' && (
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => handleApproveOrder(order.id)}
-                                  disabled={approvingOrderId === order.id}
-                                  className="px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                                >
-                                  {approvingOrderId === order.id ? (
-                                    <>
-                                      <Loader2 className="h-4 w-4 animate-spin" />
-                                      Approving...
-                                    </>
-                                  ) : (
-                                    <>
-                                      <CheckCircle className="h-4 w-4" />
-                                      Approve
-                                    </>
-                                  )}
-                                </button>
-                                <button
-                                  onClick={() => handleRejectOrder(order.id)}
-                                  disabled={rejectingOrderId === order.id}
-                                  className="px-4 py-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                                >
-                                  {rejectingOrderId === order.id ? (
-                                    <>
-                                      <Loader2 className="h-4 w-4 animate-spin" />
-                                      Rejecting...
-                                    </>
-                                  ) : (
-                                    <>
-                                      <XCircle className="h-4 w-4" />
-                                      Reject
-                                    </>
-                                  )}
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -525,6 +660,108 @@ function ProfileContent() {
       </main>
 
       <Footer />
+
+      {feedbackOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+          <div className="w-full max-w-lg rounded-2xl border border-gray-800 bg-gradient-to-br from-zinc-900 to-zinc-950 p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-bold text-gray-100">
+                  {feedbackOrder.feedback ? 'Update Your Feedback' : 'Share Your Experience'}
+                </h3>
+                <p className="mt-1 text-sm text-gray-400">
+                  {feedbackOrder.booster_profile?.name
+                    ? `How was your session with ${feedbackOrder.booster_profile.name}?`
+                    : 'Tell us how the booster handled your order.'}
+                </p>
+              </div>
+              <button
+                onClick={handleCloseFeedbackModal}
+                className="text-sm font-semibold text-gray-500 transition-colors hover:text-gray-300"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="mt-6">
+              <p className="text-sm font-medium text-gray-300 mb-2">
+                Rate your booster
+              </p>
+              <div className="flex items-center gap-2">
+                {Array.from({ length: 5 }).map((_, index) => {
+                  const starValue = index + 1
+                  const isActive = (hoverRating ?? feedbackRating ?? 0) >= starValue
+                  return (
+                    <button
+                      key={starValue}
+                      type="button"
+                      onMouseEnter={() => setHoverRating(starValue)}
+                      onMouseLeave={() => setHoverRating(null)}
+                      onClick={() => setFeedbackRating(starValue)}
+                      className="focus:outline-none"
+                    >
+                      <Star
+                        className={`h-8 w-8 transition-colors ${isActive ? 'text-yellow-400' : 'text-gray-600 hover:text-yellow-300'}`}
+                        fill={isActive ? 'currentColor' : 'none'}
+                      />
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div className="mt-5">
+              <p className="text-sm font-medium text-gray-300 mb-2">
+                Leave a comment (optional)
+              </p>
+              <textarea
+                value={feedbackComment}
+                onChange={(event) => setFeedbackComment(event.target.value)}
+                placeholder="Share what went well or what could be improved..."
+                className="w-full min-h-[120px] resize-none rounded-xl border border-gray-800 bg-zinc-900/60 px-4 py-3 text-sm text-gray-100 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                maxLength={1000}
+              />
+              <div className="mt-1 flex justify-between text-xs text-gray-500">
+                <span>Order ID: {feedbackOrder.id.slice(0, 8)}...</span>
+                <span>{feedbackComment.length}/1000</span>
+              </div>
+            </div>
+
+            {feedbackError && (
+              <div className="mt-4 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm text-red-300">
+                {feedbackError}
+              </div>
+            )}
+
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <button
+                onClick={handleCloseFeedbackModal}
+                className="px-5 py-2.5 text-sm font-semibold text-gray-300 transition-colors hover:text-gray-100"
+                disabled={isSubmittingFeedback}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmitFeedback}
+                disabled={isSubmittingFeedback}
+                className="flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-2.5 text-sm font-semibold text-white transition-all hover:from-blue-700 hover:to-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isSubmittingFeedback ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Star className="h-4 w-4" />
+                    Submit Feedback
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

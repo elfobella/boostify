@@ -63,6 +63,10 @@ export async function POST(req: NextRequest) {
     const boosterId = metadata.booster_id || null
     const orderStatus = boosterId ? 'processing' : 'pending'
     
+    // Extract coupon information
+    const couponCode = metadata.coupon_code || null
+    const discountAmount = metadata.discount_amount ? parseFloat(metadata.discount_amount) : 0
+    
     const orderData = {
       user_id: userId,
       booster_id: boosterId,
@@ -72,10 +76,12 @@ export async function POST(req: NextRequest) {
       game_account: metadata.game_account || '',
       current_level: metadata.current_level || '',
       target_level: metadata.target_level || '',
-      amount: paymentIntent.amount / 100, // Convert from cents to dollars
+      amount: paymentIntent.amount / 100, // Convert from cents to dollars (this is final amount after coupon)
       currency: paymentIntent.currency,
       estimated_time: metadata.estimated_time || null,
       status: orderStatus,
+      coupon_code: couponCode,
+      discount_amount: discountAmount,
     }
 
     console.log('[Orders API] Order data:', orderData)
@@ -125,6 +131,54 @@ export async function POST(req: NextRequest) {
       .from('orders')
       .update({ payment_status: 'captured' })
       .eq('id', newOrder.id)
+
+    // Record coupon usage if coupon was applied
+    if (couponCode && discountAmount > 0) {
+      try {
+        // Get coupon ID
+        const { data: coupon } = await supabaseAdmin
+          .from('coupons')
+          .select('id')
+          .eq('code', couponCode.toUpperCase())
+          .single()
+
+        if (coupon) {
+          // Calculate original amount (before discount)
+          const originalAmount = (paymentIntent.amount / 100) + discountAmount
+
+          // Record coupon usage
+          await supabaseAdmin
+            .from('coupon_usages')
+            .insert({
+              coupon_id: coupon.id,
+              user_id: userId,
+              order_id: newOrder.id,
+              discount_amount: discountAmount,
+              original_amount: originalAmount,
+              final_amount: paymentIntent.amount / 100,
+            })
+
+          // Increment coupon usage count
+          const { data: currentCoupon } = await supabaseAdmin
+            .from('coupons')
+            .select('usage_count')
+            .eq('id', coupon.id)
+            .single()
+
+          if (currentCoupon) {
+            await supabaseAdmin
+              .from('coupons')
+              .update({ usage_count: (currentCoupon.usage_count || 0) + 1 })
+              .eq('id', coupon.id)
+          }
+
+          console.log('[Orders API] ✅ Coupon usage recorded:', couponCode)
+        }
+      } catch (error) {
+        console.error('[Orders API] Error recording coupon usage:', error)
+        // Don't fail the order creation if coupon tracking fails
+      }
+    }
 
     return NextResponse.json(
       { message: 'Order created successfully', orderId: newOrder.id, order: newOrder },
