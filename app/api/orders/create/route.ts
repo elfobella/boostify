@@ -132,6 +132,68 @@ export async function POST(req: NextRequest) {
       .update({ payment_status: 'captured' })
       .eq('id', newOrder.id)
 
+    // If booster is already assigned (instant match flow), ensure chat exists
+    if (boosterId && newOrder.user_id) {
+      try {
+        // Re-use existing active chat between this customer and booster if one exists
+        const { data: existingChat } = await supabaseAdmin
+          .from('chats')
+          .select('id')
+          .eq('customer_id', newOrder.user_id)
+          .eq('booster_id', boosterId)
+          .eq('status', 'active')
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        let chatId = existingChat?.id ?? null
+
+        if (chatId) {
+          await supabaseAdmin
+            .from('chats')
+            .update({ updated_at: new Date().toISOString(), order_id: newOrder.id })
+            .eq('id', chatId)
+        } else {
+          const { data: chat, error: chatError } = await supabaseAdmin
+            .from('chats')
+            .insert({
+              order_id: newOrder.id,
+              customer_id: newOrder.user_id,
+              booster_id: boosterId,
+              status: 'active',
+            })
+            .select()
+            .single()
+
+          if (chatError) {
+            console.error('[Orders API] Failed to auto-create chat:', chatError)
+          } else {
+            chatId = chat?.id ?? null
+            console.log('[Orders API] ✅ Auto chat created:', chatId)
+          }
+        }
+
+        if (chatId) {
+          const initialMessage = metadata?.initial_message || `Thanks for choosing us! Your booster has been assigned and will reach out here soon.`
+          await supabaseAdmin
+            .from('messages')
+            .insert({
+              chat_id: chatId,
+              sender_id: boosterId,
+              content: initialMessage,
+              message_type: 'system',
+            })
+            .then(({ error: msgError }) => {
+              if (msgError) {
+                console.error('[Orders API] Failed to create auto chat message:', msgError)
+              }
+            })
+        }
+      } catch (chatException) {
+        console.error('[Orders API] Exception while ensuring chat:', chatException)
+      }
+    }
+
     // Record coupon usage if coupon was applied
     if (couponCode && discountAmount > 0) {
       try {
