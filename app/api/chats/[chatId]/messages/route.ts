@@ -75,16 +75,7 @@ export async function GET(
     // Fetch messages
     const { data: messages, error: messagesError } = await supabaseAdmin
       .from('messages')
-      .select(`
-        *,
-        sender:users!messages_sender_id_fkey(
-          id,
-          name,
-          email,
-          image,
-          role
-        )
-      `)
+      .select('*')
       .eq('chat_id', chatId)
       .order('created_at', { ascending: true })
       .limit(100)
@@ -97,8 +88,31 @@ export async function GET(
       )
     }
 
+    const messagesList = messages || []
+
+    const senderIds = Array.from(new Set(messagesList.map(message => message.sender_id).filter(Boolean)))
+    let senderMap = new Map<string, any>()
+
+    if (senderIds.length > 0) {
+      const { data: senders, error: sendersError } = await supabaseAdmin
+        .from('users')
+        .select('id, name, email, image, role')
+        .in('id', senderIds)
+
+      if (sendersError) {
+        console.error('[Messages API] Error hydrating senders:', sendersError)
+      } else if (senders) {
+        senderMap = new Map(senders.map(sender => [sender.id, sender]))
+      }
+    }
+
+    const hydratedMessages = messagesList.map(message => ({
+      ...message,
+      sender: message.sender_id ? senderMap.get(message.sender_id) || null : null,
+    }))
+
     return NextResponse.json({
-      messages: messages || [],
+      messages: hydratedMessages,
     }, { status: 200 })
   } catch (error) {
     console.error('[Messages API] Exception:', error)
@@ -196,16 +210,7 @@ export async function POST(
         content: content.trim(),
         message_type: message_type,
       })
-      .select(`
-        *,
-        sender:users!messages_sender_id_fkey(
-          id,
-          name,
-          email,
-          image,
-          role
-        )
-      `)
+      .select('*')
       .single()
 
     if (messageError) {
@@ -224,8 +229,21 @@ export async function POST(
 
     console.log('[Messages API] ✅ Message sent successfully:', message.id)
 
+    let sender = null
+    if (message?.sender_id) {
+      const { data: senderData } = await supabaseAdmin
+        .from('users')
+        .select('id, name, email, image, role')
+        .eq('id', message.sender_id)
+        .single()
+      sender = senderData || null
+    }
+
     return NextResponse.json({
-      message,
+      message: {
+        ...message,
+        sender,
+      },
     }, { status: 201 })
   } catch (error) {
     console.error('[Messages API] Exception:', error)
