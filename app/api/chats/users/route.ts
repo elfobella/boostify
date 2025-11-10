@@ -41,27 +41,7 @@ export async function GET(req: NextRequest) {
     // Fetch chats for this user (customer or booster)
     const { data: chats, error: chatsError } = await supabaseAdmin
       .from('chats')
-      .select(`
-        *,
-        order:orders(
-          id,
-          game,
-          service_category,
-          status
-        ),
-        customer:users!chats_customer_id_fkey(
-          id,
-          name,
-          email,
-          image
-        ),
-        booster:users!chats_booster_id_fkey(
-          id,
-          name,
-          email,
-          image
-        )
-      `)
+      .select('*')
       .or(`customer_id.eq.${userData.id},booster_id.eq.${userData.id}`)
       .order('updated_at', { ascending: false })
       .limit(50)
@@ -74,8 +54,48 @@ export async function GET(req: NextRequest) {
       )
     }
 
+    const chatsList = chats || []
+
+    const orderIds = Array.from(new Set(chatsList.map(chat => chat.order_id).filter(Boolean)))
+    const userIds = Array.from(new Set(
+      chatsList.flatMap(chat => [chat.customer_id, chat.booster_id]).filter(Boolean)
+    ))
+
+    const [ordersResult, usersResult] = await Promise.all([
+      orderIds.length > 0
+        ? supabaseAdmin
+            .from('orders')
+            .select('id, game, service_category, status')
+            .in('id', orderIds)
+        : Promise.resolve({ data: [], error: null }),
+      userIds.length > 0
+        ? supabaseAdmin
+            .from('users')
+            .select('id, name, email, image')
+            .in('id', userIds)
+        : Promise.resolve({ data: [], error: null }),
+    ])
+
+    if (ordersResult.error) {
+      console.error('[Chats API] Error hydrating orders:', ordersResult.error)
+    }
+
+    if (usersResult.error) {
+      console.error('[Chats API] Error hydrating users:', usersResult.error)
+    }
+
+    const orderMap = new Map((ordersResult.data || []).map(order => [order.id, order]))
+    const userMap = new Map((usersResult.data || []).map(user => [user.id, user]))
+
+    const hydratedChats = chatsList.map(chat => ({
+      ...chat,
+      order: chat.order_id ? orderMap.get(chat.order_id) || null : null,
+      customer: chat.customer_id ? userMap.get(chat.customer_id) || null : null,
+      booster: chat.booster_id ? userMap.get(chat.booster_id) || null : null,
+    }))
+ 
     return NextResponse.json({
-      chats: chats || [],
+      chats: hydratedChats,
     }, { status: 200 })
   } catch (error) {
     console.error('[Chats API] Exception:', error)
