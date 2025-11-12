@@ -67,6 +67,15 @@ export async function POST(req: NextRequest) {
     const couponCode = metadata.coupon_code || null
     const discountAmount = metadata.discount_amount ? parseFloat(metadata.discount_amount) : 0
     
+    let addons: Record<string, any> | null = null
+    if (metadata.addons) {
+      try {
+        addons = JSON.parse(metadata.addons)
+      } catch (parseError) {
+        console.warn('[Orders API] Failed to parse addons metadata:', parseError)
+      }
+    }
+
     const orderData = {
       user_id: userId,
       booster_id: boosterId,
@@ -82,6 +91,7 @@ export async function POST(req: NextRequest) {
       status: orderStatus,
       coupon_code: couponCode,
       discount_amount: discountAmount,
+      addons: addons ?? {},
     }
 
     console.log('[Orders API] Order data:', orderData)

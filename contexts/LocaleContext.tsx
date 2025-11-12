@@ -97,6 +97,7 @@ const translations = {
       selectService: "Select Service",
       orderDetails: "Order Details",
       categories: {
+        categoryLabel: "Service",
         trophy: "Trophy Boosting",
         pathOfLegends: "Path of Legends",
         ucMedals: "UC Medals",
@@ -105,7 +106,18 @@ const translations = {
         passRoyale: "Pass Royale",
         crowns: "Crowns",
         tournament: "Tournament",
-        customRequest: "Custom Request"
+        customRequest: "Custom Request",
+        badges: {
+          trophy: "Arena climb specialists",
+          pathOfLegends: "Legend rank mastery",
+          ucMedals: "Season reward rush",
+          mergeTactics: "Smart upgrade path",
+          challenges: "Guaranteed wins",
+          passRoyale: "Premium pass boost",
+          crowns: "Fast crown farming",
+          tournament: "Competitive coaching",
+          customRequest: "Tailored to you"
+        }
       },
       form: {
         gameAccount: "Game Account (Player Tag)",
@@ -118,6 +130,42 @@ const translations = {
         estimatedPrice: "Estimated Price",
         estimatedTime: "Estimated time",
         proceedPayment: "Proceed to Payment"
+      },
+      formPreview: {
+        currentLabel: "Current",
+        currentDescription: "Starting point",
+        targetLabel: "Target",
+        targetDescription: "Desired rank",
+        statusLabel: "Status",
+        statusReady: "Ready",
+        statusIncomplete: "Incomplete",
+        statusReadyDescription: "You can proceed to payment",
+        statusIncompleteDescription: "Fill all required fields",
+        fillPrompt: "Complete the fields to preview time"
+      },
+      orderDetailsHint: "We only use this to assign your booster.",
+      liveEstimate: "Live Estimate",
+      addons: {
+        heading: "Add-ons",
+        summaryLabel: "Selected add-ons",
+        noneSelected: "No add-ons selected",
+        stream: {
+          title: "Stream",
+          description: "Watch your boost live"
+        },
+        soloQueue: {
+          title: "Solo Queue",
+          description: "Play solo matches only"
+        },
+        offlineMode: {
+          title: "Offline Mode",
+          description: "Play without appearing online"
+        },
+        badges: {
+          stream: "Stream",
+          soloQueue: "Solo queue",
+          offlineMode: "Offline"
+        }
       }
     },
     profile: {
@@ -224,15 +272,27 @@ const translations = {
       selectService: "Hizmet Seçin",
       orderDetails: "Sipariş Detayları",
       categories: {
-        trophy: "Kupa Artırma",
+        categoryLabel: "Hizmet",
+        trophy: "Kupa Boosting",
         pathOfLegends: "Efsane Yolu",
         ucMedals: "UC Madalya",
-        mergeTactics: "Birleştirme Taktikleri",
-        challenges: "Meydan Okumalar",
-        passRoyale: "Kraliyet Geçişi",
+        mergeTactics: "Merge Tactics",
+        challenges: "Meydan Okuma",
+        passRoyale: "Pass Royale",
         crowns: "Taç",
         tournament: "Turnuva",
-        customRequest: "Özel İstek"
+        customRequest: "Özel İstek",
+        badges: {
+          trophy: "Arena tırmanış uzmanı",
+          pathOfLegends: "Efsane rütbe ustası",
+          ucMedals: "Sezon ödülü atağı",
+          mergeTactics: "Akıllı geliştirme rotası",
+          challenges: "Garantili galibiyet",
+          passRoyale: "Premium pass desteği",
+          crowns: "Hızlı taç toplama",
+          tournament: "Rekabetçi koçluk",
+          customRequest: "Size özel plan"
+        }
       },
       form: {
         gameAccount: "Oyun Hesabı (Oyuncu Tag)",
@@ -245,6 +305,42 @@ const translations = {
         estimatedPrice: "Tahmini Fiyat",
         estimatedTime: "Tahmini süre",
         proceedPayment: "Ödemeye Geç"
+      },
+      formPreview: {
+        currentLabel: "Mevcut",
+        currentDescription: "Başlangıç noktası",
+        targetLabel: "Hedef",
+        targetDescription: "İstenen seviye",
+        statusLabel: "Durum",
+        statusReady: "Hazır",
+        statusIncomplete: "Eksik",
+        statusReadyDescription: "Ödemeye geçebilirsiniz",
+        statusIncompleteDescription: "Tüm alanları doldurun",
+        fillPrompt: "Süreyi görmek için alanları tamamlayın"
+      },
+      orderDetailsHint: "Bu bilgi sadece boosterinizi atamak için kullanılır.",
+      liveEstimate: "Canlı Tahmin",
+      addons: {
+        heading: "Eklentiler",
+        summaryLabel: "Seçilen eklentiler",
+        noneSelected: "Eklenti seçilmedi",
+        stream: {
+          title: "Yayın",
+          description: "Boost sürecini canlı izleyin"
+        },
+        soloQueue: {
+          title: "Solo Sıra",
+          description: "Sadece solo maçlar oynansın"
+        },
+        offlineMode: {
+          title: "Çevrimdışı Mod",
+          description: "Çevrimdışı görünerek oynayın"
+        },
+        badges: {
+          stream: "Yayın",
+          soloQueue: "Solo",
+          offlineMode: "Gizli"
+        }
       }
     },
     profile: {
@@ -266,6 +362,9 @@ const translations = {
       noOrdersYet: "Henüz sipariş yok",
       ordersDescription: "Boosting siparişleriniz burada görünecek"
     }
+  },
+  common: {
+    reset: "Reset"
   }
 }
 

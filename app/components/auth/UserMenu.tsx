@@ -33,13 +33,23 @@ export function UserMenu() {
     }
   }, [session])
 
+  React.useEffect(() => {
+    if (!session?.user) return
+
+    const interval = setInterval(() => {
+      fetchUnreadCount()
+    }, 15000)
+
+    return () => clearInterval(interval)
+  }, [session?.user?.id])
+
   const fetchUnreadCount = async () => {
     try {
       const response = await fetch('/api/chats/users')
       if (response.ok) {
         const data = await response.json()
-        // TODO: Calculate unread messages count
-        setUnreadCount(0)
+        const count = typeof data.unreadCount === 'number' ? data.unreadCount : 0
+        setUnreadCount(count)
       } else {
         // Endpoint might be unavailable in some environments; ignore
         setUnreadCount(0)
@@ -66,6 +76,9 @@ export function UserMenu() {
 
   return (
     <div className="relative">
+      {unreadCount > 0 && (
+        <span className="absolute -top-1 -right-1 z-10 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-zinc-950" />
+      )}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 px-2 py-1.5 rounded-lg border border-gray-800 bg-zinc-900 hover:bg-zinc-800 transition-colors"

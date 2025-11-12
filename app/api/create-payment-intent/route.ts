@@ -138,6 +138,9 @@ export async function POST(req: NextRequest) {
       metadata.game_account = orderData.gameAccount || ''
       metadata.current_level = orderData.currentLevel || ''
       metadata.target_level = orderData.targetLevel || ''
+      if (orderData.addons) {
+        metadata.addons = JSON.stringify(orderData.addons)
+      }
     }
     if (estimatedTime) {
       metadata.estimated_time = estimatedTime

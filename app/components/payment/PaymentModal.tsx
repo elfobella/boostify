@@ -14,6 +14,11 @@ interface OrderData {
   gameAccount: string
   currentLevel: string
   targetLevel: string
+  addons?: {
+    stream: boolean
+    soloQueue: boolean
+    offlineMode: boolean
+  }
 }
 
 interface PaymentModalProps {

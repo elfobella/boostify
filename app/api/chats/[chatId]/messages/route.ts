@@ -106,10 +106,28 @@ export async function GET(
       }
     }
 
-    const hydratedMessages = messagesList.map(message => ({
+    let hydratedMessages = messagesList.map(message => ({
       ...message,
       sender: message.sender_id ? senderMap.get(message.sender_id) || null : null,
     }))
+
+    const unreadIds = hydratedMessages
+      .filter(message => message.sender_id !== userData.id && !message.read_at)
+      .map(message => message.id)
+
+    if (unreadIds.length > 0) {
+      const now = new Date().toISOString()
+      await supabaseAdmin
+        .from('messages')
+        .update({ read_at: now })
+        .in('id', unreadIds)
+
+      hydratedMessages = hydratedMessages.map(message =>
+        unreadIds.includes(message.id)
+          ? { ...message, read_at: now }
+          : message
+      )
+    }
 
     return NextResponse.json({
       messages: hydratedMessages,

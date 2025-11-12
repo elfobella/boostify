@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS orders (
   game_account TEXT NOT NULL,
   current_level TEXT NOT NULL,
   target_level TEXT NOT NULL,
+  addons JSONB DEFAULT '{}'::jsonb,
   amount DECIMAL(10, 2) NOT NULL,
   currency TEXT NOT NULL DEFAULT 'usd',
   estimated_time TEXT,

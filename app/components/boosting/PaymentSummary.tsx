@@ -12,7 +12,16 @@ interface OrderData {
   gameAccount: string
   currentLevel: string
   targetLevel: string
+  addons?: AddonsState
 }
+
+interface AddonsState {
+  stream: boolean
+  soloQueue: boolean
+  offlineMode: boolean
+}
+
+type AddonKey = keyof AddonsState
 
 interface PaymentSummaryProps {
   price: number
@@ -20,20 +29,33 @@ interface PaymentSummaryProps {
   isValid: boolean
   onProceed: () => void
   orderData?: OrderData
+  addons: AddonsState
+  onAddonsChange: (next: AddonsState) => void
 }
 
-export function PaymentSummary({ price, estimatedTime, isValid, onProceed, orderData }: PaymentSummaryProps) {
+export function PaymentSummary({ price, estimatedTime, isValid, onProceed, orderData, addons, onAddonsChange }: PaymentSummaryProps) {
   const { convertPrice } = useCurrency()
   const { t } = useLocaleContext()
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
-  const [isStreamEnabled, setIsStreamEnabled] = useState(false)
-  const [isSoloQueueEnabled, setIsSoloQueueEnabled] = useState(false)
-  const [isOfflineModeEnabled, setIsOfflineModeEnabled] = useState(false)
 
   const handleProceedClick = () => {
     if (isValid && price > 0) {
       setIsPaymentModalOpen(true)
     }
+  }
+
+  const handleToggle = (key: keyof AddonsState) => {
+    onAddonsChange({
+      ...addons,
+      [key]: !addons[key],
+    })
+  }
+
+  const activeAddons = Object.entries(addons).filter(([, value]) => value)
+  const addonBadgeLabels: Record<AddonKey, string> = {
+    stream: t("clashRoyale.addons.badges.stream"),
+    soloQueue: t("clashRoyale.addons.badges.soloQueue"),
+    offlineMode: t("clashRoyale.addons.badges.offlineMode"),
   }
 
   const handlePaymentSuccess = () => {
@@ -82,26 +104,26 @@ export function PaymentSummary({ price, estimatedTime, isValid, onProceed, order
 
         {/* Add-ons/Toggles */}
         <div className="space-y-3 border-t border-gray-800 pt-4">
-          <h4 className="text-sm font-semibold text-gray-300 mb-3">Add-ons</h4>
+          <h4 className="text-sm font-semibold text-gray-300 mb-3">{t("clashRoyale.addons.heading")}</h4>
           
           {/* Stream Toggle */}
           <div className="flex items-center justify-between p-3 bg-zinc-800/50 rounded-lg border border-gray-700/50 hover:border-gray-600 transition-colors">
             <div className="flex items-center gap-3">
               <Radio className="h-5 w-5 text-blue-400" />
               <div>
-                <p className="text-sm font-medium text-gray-200">Stream</p>
-                <p className="text-xs text-gray-500">Watch your boost live</p>
+                <p className="text-sm font-medium text-gray-200">{t("clashRoyale.addons.stream.title")}</p>
+                <p className="text-xs text-gray-500">{t("clashRoyale.addons.stream.description")}</p>
               </div>
             </div>
             <button
-              onClick={() => setIsStreamEnabled(!isStreamEnabled)}
+              onClick={() => handleToggle('stream')}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                isStreamEnabled ? 'bg-blue-600' : 'bg-gray-700'
+                addons.stream ? 'bg-blue-600' : 'bg-gray-700'
               }`}
             >
               <span
                 className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  isStreamEnabled ? 'translate-x-6' : 'translate-x-1'
+                  addons.stream ? 'translate-x-6' : 'translate-x-1'
                 }`}
               />
             </button>
@@ -112,19 +134,19 @@ export function PaymentSummary({ price, estimatedTime, isValid, onProceed, order
             <div className="flex items-center gap-3">
               <Users className="h-5 w-5 text-green-400" />
               <div>
-                <p className="text-sm font-medium text-gray-200">Solo Queue</p>
-                <p className="text-xs text-gray-500">Play solo matches only</p>
+                <p className="text-sm font-medium text-gray-200">{t("clashRoyale.addons.soloQueue.title")}</p>
+                <p className="text-xs text-gray-500">{t("clashRoyale.addons.soloQueue.description")}</p>
               </div>
             </div>
             <button
-              onClick={() => setIsSoloQueueEnabled(!isSoloQueueEnabled)}
+              onClick={() => handleToggle('soloQueue')}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                isSoloQueueEnabled ? 'bg-green-600' : 'bg-gray-700'
+                addons.soloQueue ? 'bg-green-600' : 'bg-gray-700'
               }`}
             >
               <span
                 className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  isSoloQueueEnabled ? 'translate-x-6' : 'translate-x-1'
+                  addons.soloQueue ? 'translate-x-6' : 'translate-x-1'
                 }`}
               />
             </button>
@@ -135,22 +157,43 @@ export function PaymentSummary({ price, estimatedTime, isValid, onProceed, order
             <div className="flex items-center gap-3">
               <EyeOff className="h-5 w-5 text-purple-400" />
               <div>
-                <p className="text-sm font-medium text-gray-200">Offline Mode</p>
-                <p className="text-xs text-gray-500">Play without appearing online</p>
+                <p className="text-sm font-medium text-gray-200">{t("clashRoyale.addons.offlineMode.title")}</p>
+                <p className="text-xs text-gray-500">{t("clashRoyale.addons.offlineMode.description")}</p>
               </div>
             </div>
             <button
-              onClick={() => setIsOfflineModeEnabled(!isOfflineModeEnabled)}
+              onClick={() => handleToggle('offlineMode')}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                isOfflineModeEnabled ? 'bg-purple-600' : 'bg-gray-700'
+                addons.offlineMode ? 'bg-purple-600' : 'bg-gray-700'
               }`}
             >
               <span
                 className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  isOfflineModeEnabled ? 'translate-x-6' : 'translate-x-1'
+                  addons.offlineMode ? 'translate-x-6' : 'translate-x-1'
                 }`}
               />
             </button>
+          </div>
+
+          <div className="rounded-lg border border-gray-800 bg-zinc-900/90 p-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+              {t("clashRoyale.addons.summaryLabel")}
+            </p>
+            {activeAddons.length === 0 ? (
+              <p className="mt-2 text-xs text-gray-600">{t("clashRoyale.addons.noneSelected")}</p>
+            ) : (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {activeAddons.map(([key]) => (
+                  <span
+                    key={key}
+                    className="inline-flex items-center gap-1 rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-[11px] font-medium text-blue-100"
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
+                    {addonBadgeLabels[key as AddonKey]}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -216,7 +259,7 @@ export function PaymentSummary({ price, estimatedTime, isValid, onProceed, order
         onClose={() => setIsPaymentModalOpen(false)}
         amount={price}
         onSuccess={handlePaymentSuccess}
-        orderData={orderData}
+        orderData={orderData ? { ...orderData, addons } : undefined}
         estimatedTime={estimatedTime}
       />
     </div>

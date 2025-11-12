@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Navbar } from "@/app/components/navbar"
 import { Footer } from "@/app/components/footer"
 import { ServiceCategorySelector, BoostingForm, PaymentSummary } from "@/app/components/boosting"
-import { ServiceCategory, getEstimatedTime } from "@/lib/pricing"
+import { ServiceCategory } from "@/lib/pricing"
 import Image from "next/image"
 import { useLocaleContext } from "@/contexts"
 
@@ -17,22 +17,23 @@ export default function ClashRoyaleBoostingPage() {
   const [currentLevel, setCurrentLevel] = useState("")
   const [targetLevel, setTargetLevel] = useState("")
   const [gameAccount, setGameAccount] = useState("")
+  const [addons, setAddons] = useState({
+    stream: false,
+    soloQueue: false,
+    offlineMode: false,
+  })
 
   const handlePriceChange = (price: number) => {
     setCalculatedPrice(price)
-    // Calculate time based on current values
-    if (currentLevel && targetLevel) {
-      const current = parseFloat(currentLevel)
-      const target = parseFloat(targetLevel)
-      if (!isNaN(current) && !isNaN(target)) {
-        setEstimatedTime(getEstimatedTime(current, target, selectedCategory))
-      }
-    }
   }
 
   const handleProceed = () => {
     // Handle payment logic here
     console.log("Proceeding to payment...")
+  }
+
+  const handleEstimatedTimeChange = (time: string) => {
+    setEstimatedTime(time)
   }
 
   return (
@@ -100,6 +101,7 @@ export default function ClashRoyaleBoostingPage() {
                   <BoostingForm
                     category={selectedCategory}
                     onPriceChange={handlePriceChange}
+                    onEstimatedTimeChange={handleEstimatedTimeChange}
                     onFormChange={setIsFormValid}
                     onFormDataChange={(data) => {
                       setGameAccount(data.gameAccount)
@@ -124,6 +126,8 @@ export default function ClashRoyaleBoostingPage() {
                     currentLevel,
                     targetLevel,
                   }}
+                  addons={addons}
+                  onAddonsChange={(next) => setAddons(next)}
                 />
               </div>
             </div>
