@@ -14,7 +14,7 @@ const stripe = new Stripe(stripeSecretKey, {
 
 export async function POST(req: NextRequest) {
   try {
-    const { amount, currency = 'usd', orderData, estimatedTime, boosterId, couponCode } = await req.json()
+    const { amount, currency = 'usd', orderData, estimatedTime, boosterId, couponCode, paymentMethod = 'card' } = await req.json()
 
     if (!amount || amount <= 0) {
       return NextResponse.json(
@@ -160,10 +160,26 @@ export async function POST(req: NextRequest) {
         enabled: true,
         allow_redirects: 'always', // Enable Apple Pay, Google Pay, and other redirect-based payment methods
       },
-      metadata: metadata,
+      metadata: {
+        ...metadata,
+        selected_payment_method: paymentMethod,
+      },
       // Do NOT add payment_method_types - this would restrict available methods
       // Do NOT add payment_method_configuration - use default Stripe account settings
       // Note: Google Pay requires automatic_payment_methods.enabled: true
+    }
+
+    // Add crypto payment method options if crypto is selected
+    if (paymentMethod === 'crypto') {
+      paymentIntentData.payment_method_types = ['crypto']
+      paymentIntentData.payment_method_options = {
+        crypto: {
+          preferred_network: 'ethereum', // or 'solana'
+          preferred_currency: 'usdc',
+        },
+      }
+      // Note: Crypto requires automatic_payment_methods to be disabled
+      delete paymentIntentData.automatic_payment_methods
     }
 
     // Add Connect split if booster provided

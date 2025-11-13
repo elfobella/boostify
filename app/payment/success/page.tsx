@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from "react"
 import { CheckCircle, Mail, Clock, Shield, ArrowLeft } from "lucide-react"
 import { Navbar } from "@/app/components/navbar"
 import { Footer } from "@/app/components/footer"
+import { Toast } from "@/app/components/ui"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { useLocaleContext } from "@/contexts"
@@ -13,6 +14,7 @@ function PaymentSuccessContent() {
   const { t } = useLocaleContext()
   const [paymentId, setPaymentId] = useState<string | null>(null)
   const [orderSaved, setOrderSaved] = useState(false)
+  const [showToast, setShowToast] = useState(false)
 
   useEffect(() => {
     // Get payment intent ID from URL if available
@@ -36,11 +38,16 @@ function PaymentSuccessContent() {
           if (data.orderId) {
             console.log('Order saved on success page:', data.orderId)
             setOrderSaved(true)
+            // Show toast notification after order is saved
+            setShowToast(true)
           }
         })
         .catch((error) => {
           console.error('Error saving order on success page:', error)
         })
+    } else {
+      // Show toast even if no payment intent (for direct visits)
+      setShowToast(true)
     }
   }, [searchParams])
 
@@ -160,6 +167,17 @@ function PaymentSuccessContent() {
       </main>
 
       <Footer />
+
+      {/* Success Toast Notification */}
+      <Toast
+        isOpen={showToast}
+        onClose={() => setShowToast(false)}
+        title="Order Placed Successfully!"
+        message="View your order in profile"
+        actionLabel="View Orders"
+        actionHref="/profile"
+        duration={5000}
+      />
     </div>
   )
 }

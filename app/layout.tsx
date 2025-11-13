@@ -19,7 +19,24 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Atlas Boost",
-  description: "Modern Next.js application with dark mode",
+  description: "Professional gaming boosting services",
+  icons: {
+    icon: [
+      { url: '/icon.png', type: 'image/png' },
+      { url: '/logo.png', type: 'image/png', sizes: '32x32' },
+      { url: '/logo.png', type: 'image/png', sizes: '16x16' },
+    ],
+    apple: [
+      { url: '/icon.png', type: 'image/png', sizes: '180x180' },
+    ],
+    shortcut: '/icon.png',
+  },
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Atlas Boost',
+  },
 };
 
 export default function RootLayout({

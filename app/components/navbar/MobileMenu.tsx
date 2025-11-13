@@ -1,26 +1,14 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
 import { Menu, X } from "lucide-react"
-import { cn } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
-import { useLocaleContext, useLoginModal } from "@/contexts"
+import { useLoginModal } from "@/contexts"
 import { AuthButton, UserMenu } from "../auth"
 import { useSession } from "next-auth/react"
 
-const navItems = [
-  { href: "/", key: "home" },
-  { href: "/about", key: "about" },
-  { href: "/services", key: "services" },
-  { href: "/contact", key: "contact" },
-]
-
 export function MobileMenu() {
   const [isOpen, setIsOpen] = React.useState(false)
-  const pathname = usePathname()
-  const { t } = useLocaleContext()
   const { data: session } = useSession()
   const { openModal } = useLoginModal()
   const isAuthenticated = !!session?.user
@@ -45,21 +33,6 @@ export function MobileMenu() {
             className="absolute left-0 right-0 top-16 z-50 border-b border-gray-800 bg-zinc-950"
           >
             <nav className="flex flex-col p-4 space-y-2">
-              {navItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setIsOpen(false)}
-                  className={cn(
-                    "rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-zinc-900",
-                    pathname === item.href
-                      ? "bg-zinc-900 text-blue-400"
-                      : "opacity-60 text-gray-100"
-                  )}
-                >
-                  {t(`nav.${item.key}`)}
-                </Link>
-              ))}
               <div className="pt-2 border-t border-gray-800 mt-2">
                 {isAuthenticated ? (
                   <UserMenu />

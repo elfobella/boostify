@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from "react"
 import { createPortal } from "react-dom"
-import { X, Tag, Check, XCircle, Loader2 } from "lucide-react"
+import { X, Tag, Check, XCircle, Loader2, ArrowLeft } from "lucide-react"
 import { Elements } from "@stripe/react-stripe-js"
 import { stripePromise } from "@/lib/stripe"
 import { StripeCheckout } from "./StripeCheckout"
+import { PaymentMethodSelector, PaymentMethod } from "./PaymentMethodSelector"
 import { PaymentModalSkeleton } from "@/app/components/ui"
 
 interface OrderData {
@@ -41,6 +42,7 @@ export function PaymentModal({ isOpen, onClose, amount, onSuccess, orderData, es
   const [couponError, setCouponError] = useState<string | null>(null)
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null)
   const [mounted, setMounted] = useState(false)
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod | null>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -56,7 +58,9 @@ export function PaymentModal({ isOpen, onClose, amount, onSuccess, orderData, es
       setCouponStatus('idle')
       setCouponError(null)
       setAppliedCoupon(null)
-      createPaymentIntent(amount)
+      setSelectedPaymentMethod(null)
+      setClientSecret(null)
+      // Don't create payment intent until payment method is selected
     }
   }, [isOpen, amount])
 
@@ -96,7 +100,7 @@ export function PaymentModal({ isOpen, onClose, amount, onSuccess, orderData, es
         setCouponError(null)
         setAppliedCoupon(data.coupon)
         // Recreate payment intent with discounted amount
-        createPaymentIntent(data.finalAmount, code.trim())
+        createPaymentIntent(data.finalAmount, code.trim(), selectedPaymentMethod || undefined)
       } else {
         setCouponStatus('invalid')
         setCouponError(data.error || 'Invalid coupon code')
@@ -104,7 +108,7 @@ export function PaymentModal({ isOpen, onClose, amount, onSuccess, orderData, es
         setFinalAmount(amount)
         setAppliedCoupon(null)
         // Recreate payment intent with original amount
-        createPaymentIntent(amount)
+        createPaymentIntent(amount, undefined, selectedPaymentMethod || undefined)
       }
     } catch (error) {
       console.error('Error validating coupon:', error)
@@ -147,7 +151,7 @@ export function PaymentModal({ isOpen, onClose, amount, onSuccess, orderData, es
     validateCoupon('')
   }
 
-  const createPaymentIntent = async (paymentAmount: number, couponCodeParam?: string) => {
+  const createPaymentIntent = async (paymentAmount: number, couponCodeParam?: string, paymentMethod?: PaymentMethod) => {
     setIsLoading(true)
     try {
       const response = await fetch('/api/create-payment-intent', {
@@ -161,6 +165,7 @@ export function PaymentModal({ isOpen, onClose, amount, onSuccess, orderData, es
           orderData: orderData,
           estimatedTime: estimatedTime,
           couponCode: couponCodeParam || couponCode || undefined,
+          paymentMethod: paymentMethod || 'card',
         }),
       })
 
@@ -171,6 +176,17 @@ export function PaymentModal({ isOpen, onClose, amount, onSuccess, orderData, es
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const handlePaymentMethodSelect = (method: PaymentMethod) => {
+    setSelectedPaymentMethod(method)
+    // Create payment intent when method is selected
+    createPaymentIntent(finalAmount, couponCode || undefined, method)
+  }
+
+  const handleBackToPaymentMethods = () => {
+    setSelectedPaymentMethod(null)
+    setClientSecret(null)
   }
 
   if (!isOpen || !mounted) return null
@@ -233,8 +249,19 @@ export function PaymentModal({ isOpen, onClose, amount, onSuccess, orderData, es
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto px-6 md:px-8 py-6 md:py-8 custom-scrollbar relative z-0" style={{ isolation: 'isolate' }}>
-          {/* Coupon Code Section */}
-          <div className="mb-6 space-y-3">
+          {/* Payment Method Selection - Always show first */}
+          {!selectedPaymentMethod && (
+            <div className="mb-6">
+              <PaymentMethodSelector
+                selectedMethod={selectedPaymentMethod}
+                onMethodSelect={handlePaymentMethodSelect}
+              />
+            </div>
+          )}
+
+          {/* Coupon Code Section - Only show after payment method is selected */}
+          {selectedPaymentMethod && (
+            <div className="mb-6 space-y-3">
             <form onSubmit={handleCouponSubmit} className="space-y-2">
               <label htmlFor="coupon-code" className="text-sm font-medium text-gray-300 flex items-center gap-2">
                 <Tag className="h-4 w-4" />
@@ -317,10 +344,45 @@ export function PaymentModal({ isOpen, onClose, amount, onSuccess, orderData, es
               </div>
             </div>
           </div>
+          )}
 
-          {isLoading ? (
-            <PaymentModalSkeleton />
-          ) : clientSecret ? (
+          {/* Show payment form only if method is selected */}
+          {selectedPaymentMethod && (
+            <>
+              {/* Back Button */}
+              <div className="mb-4">
+                <button
+                  type="button"
+                  onClick={handleBackToPaymentMethods}
+                  className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-200 transition-colors"
+                  disabled={isLoading}
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  <span>Back to payment methods</span>
+                </button>
+              </div>
+
+              {/* Selected Payment Method Display */}
+              <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-gray-400 mb-1">Selected Payment Method</p>
+                    <p className="text-sm font-medium text-white">
+                      {selectedPaymentMethod === 'card' && 'Debit/Credit Cards'}
+                      {selectedPaymentMethod === 'apple_pay' && 'Apple Pay'}
+                      {selectedPaymentMethod === 'google_pay' && 'Google Pay'}
+                      {selectedPaymentMethod === 'link' && 'Link by Stripe'}
+                      {selectedPaymentMethod === 'crypto' && 'Crypto'}
+                      {selectedPaymentMethod === 'paysafe' && 'Paysafe Card'}
+                      {selectedPaymentMethod === 'skrill' && 'Skrill'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {isLoading ? (
+                <PaymentModalSkeleton />
+              ) : clientSecret ? (
             <Elements 
               stripe={stripePromise}
               options={{
@@ -351,9 +413,18 @@ export function PaymentModal({ isOpen, onClose, amount, onSuccess, orderData, es
                 currency="usd"
               />
             </Elements>
-          ) : (
-            <div className="text-center py-8 text-red-400">
-              Failed to load payment form
+              ) : (
+                <div className="text-center py-8 text-red-400">
+                  Failed to load payment form
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Show message if no payment method selected */}
+          {!selectedPaymentMethod && !isLoading && (
+            <div className="text-center py-4 text-gray-400 text-sm">
+              Please select a payment method above
             </div>
           )}
         </div>

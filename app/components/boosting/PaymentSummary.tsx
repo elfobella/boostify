@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { CheckCircle2, Shield, Clock, CreditCard, Radio, Users, EyeOff } from "lucide-react"
 import { useLocaleContext, useCurrency } from "@/contexts"
 import { PaymentModal } from "@/app/components/payment"
@@ -37,6 +37,8 @@ export function PaymentSummary({ price, estimatedTime, isValid, onProceed, order
   const { convertPrice } = useCurrency()
   const { t } = useLocaleContext()
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
+  const [isButtonVisible, setIsButtonVisible] = useState(true)
+  const buttonRef = useRef<HTMLButtonElement>(null)
 
   const handleProceedClick = () => {
     if (isValid && price > 0) {
@@ -63,6 +65,40 @@ export function PaymentSummary({ price, estimatedTime, isValid, onProceed, order
     onProceed()
     // Here you can add logic to save the order to database
   }
+
+  // Check if button is visible in viewport (mobile only)
+  useEffect(() => {
+    if (!buttonRef.current) return
+
+    const checkVisibility = () => {
+      if (window.innerWidth >= 768) {
+        // Desktop: always show as visible (hide sticky button)
+        setIsButtonVisible(true)
+        return
+      }
+
+      // Mobile: check if button is in viewport
+      const rect = buttonRef.current?.getBoundingClientRect()
+      if (rect) {
+        // Button is visible if it's within viewport bounds
+        const isVisible = rect.top < window.innerHeight && rect.bottom > 0
+        setIsButtonVisible(isVisible)
+      }
+    }
+
+    // Check on mount and scroll
+    checkVisibility()
+    const handleScroll = () => checkVisibility()
+    const handleResize = () => checkVisibility()
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    window.addEventListener('resize', handleResize)
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [])
 
   return (
     <div className="sticky top-20 bg-gradient-to-br from-zinc-900 to-zinc-950 border-2 border-gray-800 rounded-xl p-6 shadow-xl">
@@ -226,6 +262,7 @@ export function PaymentSummary({ price, estimatedTime, isValid, onProceed, order
 
         {/* CTA Button */}
         <button
+          ref={buttonRef}
           onClick={handleProceedClick}
           disabled={!isValid || price === 0}
           className="w-full px-6 py-4 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 disabled:from-gray-700 disabled:to-gray-700 text-white rounded-lg font-bold text-base transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 disabled:shadow-none"
@@ -262,6 +299,71 @@ export function PaymentSummary({ price, estimatedTime, isValid, onProceed, order
         orderData={orderData ? { ...orderData, addons } : undefined}
         estimatedTime={estimatedTime}
       />
+
+      {/* Sticky Mobile Button - Shows when original button is out of view */}
+      <div className={`
+        md:hidden
+        fixed
+        bottom-0
+        left-0
+        right-0
+        z-40
+        p-4
+        bg-zinc-950/95
+        backdrop-blur
+        border-t
+        border-gray-800
+        shadow-2xl
+        transition-transform
+        duration-300
+        ease-out
+        ${isButtonVisible ? 'translate-y-full' : 'translate-y-0'}
+      `}>
+        <button
+          onClick={handleProceedClick}
+          disabled={!isValid || price === 0}
+          className="
+            w-full
+            px-6
+            py-4
+            bg-gradient-to-r
+            from-blue-600
+            to-cyan-600
+            hover:from-blue-700
+            hover:to-cyan-700
+            disabled:from-gray-700
+            disabled:to-gray-700
+            text-white
+            rounded-lg
+            font-bold
+            text-base
+            transition-all
+            duration-200
+            flex
+            items-center
+            justify-center
+            gap-2
+            shadow-lg
+            shadow-blue-600/30
+            disabled:shadow-none
+          "
+        >
+          {!isValid ? (
+            <>
+              <span>Complete Form</span>
+            </>
+          ) : price === 0 ? (
+            <>
+              <span>Enter Details</span>
+            </>
+          ) : (
+            <>
+              <CreditCard className="h-5 w-5" />
+              <span>{t("clashRoyale.form.proceedPayment")}</span>
+            </>
+          )}
+        </button>
+      </div>
     </div>
   )
 }

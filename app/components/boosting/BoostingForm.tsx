@@ -94,13 +94,12 @@ export function BoostingForm({ category, onPriceChange, onEstimatedTimeChange, o
           <>
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                {t("clashRoyale.form.currentArena")}
+                {t("clashRoyale.form.currentTrophies") || "Current Trophies"}
               </label>
               <input
                 type="number"
-                min="1"
-                max="15"
-                placeholder="e.g. 9"
+                min="0"
+                placeholder="e.g. 2000"
                 value={currentLevel}
                 onChange={(e) => setCurrentLevel(e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-700 dark:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -108,13 +107,12 @@ export function BoostingForm({ category, onPriceChange, onEstimatedTimeChange, o
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                {t("clashRoyale.form.targetArena")}
+                {t("clashRoyale.form.targetTrophies") || "Target Trophies"}
               </label>
               <input
                 type="number"
-                min={parseInt(currentLevel) + 1 || 2}
-                max="16"
-                placeholder="e.g. 12"
+                min={parseInt(currentLevel) + 1 || 1}
+                placeholder="e.g. 3000"
                 value={targetLevel}
                 onChange={(e) => setTargetLevel(e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg dark:border-gray-700 dark:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-blue-500"

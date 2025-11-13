@@ -10,3 +10,5 @@ export {
   AvatarSkeleton
 } from "./Skeleton"
 
+export { Toast } from "./Toast"
+
