@@ -1,12 +1,13 @@
 "use client"
 
-import { Suspense, useState, useEffect } from "react"
+import { Suspense, useState, useEffect, useRef, useCallback } from "react"
 import { useSession } from "next-auth/react"
 import { Navbar } from "@/app/components/navbar"
 import { Footer } from "@/app/components/footer"
 import { MessageCircle, Loader2, ArrowLeft } from "lucide-react"
 import { ChatWindow } from "@/app/components/chat"
 import Image from "next/image"
+import { supabase } from "@/lib/supabase"
 
 interface Chat {
   id: string
@@ -40,24 +41,15 @@ function ChatsListContent() {
   const { data: session, status } = useSession()
   const [chats, setChats] = useState<Chat[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [hasLoadedChats, setHasLoadedChats] = useState(false)
+  const previousUserIdRef = useRef<string | undefined>(undefined)
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(false)
 
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768)
-    checkMobile()
-    window.addEventListener('resize', checkMobile)
-    return () => window.removeEventListener('resize', checkMobile)
-  }, [])
-
-  useEffect(() => {
-    if (session?.user) {
-      fetchChats()
+  const fetchChats = useCallback(async (showLoading = true) => {
+    if (showLoading) {
+      setIsLoading(true)
     }
-  }, [session])
-
-  const fetchChats = async () => {
-    setIsLoading(true)
     try {
       const response = await fetch('/api/chats/users')
       if (response.ok) {
@@ -78,6 +70,7 @@ function ChatsListContent() {
         
         const filteredChats = Array.from(uniqueChats.values())
         setChats(filteredChats)
+        setHasLoadedChats(true)
         
         // Auto-select first chat if available
         if (filteredChats.length > 0 && !selectedChatId) {
@@ -87,9 +80,76 @@ function ChatsListContent() {
     } catch (error) {
       console.error('Error fetching chats:', error)
     } finally {
-      setIsLoading(false)
+      if (showLoading) {
+        setIsLoading(false)
+      }
     }
-  }
+  }, [selectedChatId])
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  // Subscribe to realtime chat updates
+  useEffect(() => {
+    if (!supabase || !session?.user?.id) return
+    const client = supabase
+
+    const channel = client
+      .channel(`chats:user:${session.user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'chats',
+          filter: `or=(customer_id.eq.${session.user.id},booster_id.eq.${session.user.id})`,
+        },
+        () => {
+          fetchChats(false)
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+        },
+        () => {
+          fetchChats(false)
+        }
+      )
+      .subscribe()
+
+    return () => {
+      client.removeChannel(channel)
+    }
+  }, [session?.user?.id, fetchChats])
+
+  useEffect(() => {
+    const currentUserId = session?.user?.id
+    
+    // Only fetch if:
+    // 1. User exists and we haven't loaded chats yet, OR
+    // 2. User ID has changed (different user logged in)
+    if (currentUserId) {
+      if (!hasLoadedChats || previousUserIdRef.current !== currentUserId) {
+        previousUserIdRef.current = currentUserId
+        fetchChats()
+      }
+    } else if (previousUserIdRef.current) {
+      // User logged out - reset state
+      previousUserIdRef.current = undefined
+      setHasLoadedChats(false)
+      setIsLoading(false)
+      setChats([])
+      setSelectedChatId(null)
+    }
+  }, [session?.user?.id, hasLoadedChats, fetchChats])
 
   const getOtherParticipant = (chat: Chat) => {
     if (!session?.user?.email) return null
@@ -101,7 +161,25 @@ function ChatsListContent() {
     }
   }
 
-  if (status === "loading" || isLoading) {
+  // Only show loading for initial auth check, not for data fetching
+  if (status === "loading") {
+    return (
+      <div className="flex min-h-screen flex-col">
+        <Navbar />
+        <main className="flex-1 mt-16 py-12">
+          <div className="container px-4 mx-auto">
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    )
+  }
+
+  // Show loading only on initial data fetch
+  if (isLoading && !hasLoadedChats) {
     return (
       <div className="flex min-h-screen flex-col">
         <Navbar />

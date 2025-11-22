@@ -1,7 +1,8 @@
 "use client"
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useSession } from 'next-auth/react'
+import { supabase } from '@/lib/supabase'
 
 export interface Message {
   id: string
@@ -25,68 +26,168 @@ export function useChat(chatId: string | null) {
   const [messages, setMessages] = useState<Message[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const senderCacheRef = useRef<Map<string, Message['sender'] | undefined>>(new Map())
 
-  // Fetch initial messages
-  useEffect(() => {
-    if (!chatId || !session) return
+  const attachSenderInfo = useCallback(
+    (message: Message): Message => {
+      const cache = senderCacheRef.current
+      let sender = message.sender
 
-    const fetchMessages = async () => {
-      setIsLoading(true)
-      setError(null)
-      try {
-        const response = await fetch(`/api/chats/${chatId}/messages`)
-        if (!response.ok) {
-          throw new Error('Failed to load messages')
+      if (!sender) {
+        if (message.sender_id === session?.user?.id && session?.user) {
+          sender = {
+            id: session.user.id,
+            email: session.user.email,
+            name: session.user.name,
+            image: session.user.image,
+            role: (session.user as any)?.role ?? null,
+          }
+        } else {
+          sender = cache.get(message.sender_id) ?? undefined
         }
-        const data = await response.json()
-        setMessages(data.messages || [])
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load messages')
-      } finally {
+      }
+
+      if (sender) {
+        cache.set(message.sender_id, sender)
+      }
+
+      return { ...message, sender }
+    },
+    [session]
+  )
+
+  const fetchMessages = useCallback(async (showLoading = true) => {
+    if (!chatId || !session) return
+    if (showLoading) {
+      setIsLoading(true)
+    }
+    setError(null)
+    try {
+      const response = await fetch(`/api/chats/${chatId}/messages`)
+      if (!response.ok) {
+        throw new Error('Failed to load messages')
+      }
+      const data = await response.json()
+      const fetchedMessages: Message[] = data.messages || []
+
+      // Populate sender cache for realtime usage
+      const cache = senderCacheRef.current
+      cache.clear()
+      fetchedMessages.forEach((msg) => {
+        if (msg.sender) {
+          cache.set(msg.sender_id, msg.sender)
+        }
+      })
+
+      setMessages(fetchedMessages)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load messages')
+    } finally {
+      if (showLoading) {
         setIsLoading(false)
       }
     }
-
-    fetchMessages()
   }, [chatId, session])
 
-  // Poll for new messages (since we don't use Supabase Auth, Realtime won't work with RLS)
+  // Fetch initial messages
+  useEffect(() => {
+    fetchMessages()
+  }, [fetchMessages])
+
+  // Subscribe to realtime updates
+  useEffect(() => {
+    if (!chatId || !supabase || !session) return
+
+    const client = supabase
+
+    const channel = client
+      .channel(`chat-messages:${chatId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `chat_id=eq.${chatId}`,
+        },
+        (payload) => {
+          const newMessage = attachSenderInfo(payload.new as Message)
+          setMessages((prev) => {
+            if (prev.some((msg) => msg.id === newMessage.id)) {
+              return prev
+            }
+            return [...prev, newMessage].sort(
+              (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+            )
+          })
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'messages',
+          filter: `chat_id=eq.${chatId}`,
+        },
+        (payload) => {
+          const updatedMessage = attachSenderInfo(payload.new as Message)
+          setMessages((prev) =>
+            prev.map((msg) => (msg.id === updatedMessage.id ? updatedMessage : msg))
+          )
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'messages',
+          filter: `chat_id=eq.${chatId}`,
+        },
+        (payload) => {
+          const deletedMessage = payload.old as Message
+          setMessages((prev) => prev.filter((msg) => msg.id !== deletedMessage.id))
+        }
+      )
+      .subscribe()
+
+    return () => {
+      client.removeChannel(channel)
+    }
+  }, [chatId, session, attachSenderInfo])
+
+  // Polling fallback to ensure updates even if realtime misses events
   useEffect(() => {
     if (!chatId || !session) return
 
-    let isPageVisible = true
-    
-    const handleVisibilityChange = () => {
-      isPageVisible = !document.hidden
-    }
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-
-    const pollInterval = setInterval(async () => {
-      // Only poll if page is visible
-      if (!isPageVisible) return
-      
-      try {
-        const response = await fetch(`/api/chats/${chatId}/messages`)
-        if (response.ok) {
-          const data = await response.json()
-          setMessages(data.messages || [])
-        }
-      } catch (err) {
-        // Silently handle errors during polling
-      }
-    }, 1500) // Poll every 1.5 seconds
+    const interval = setInterval(() => {
+      fetchMessages(false)
+    }, 4000) // every 4 seconds
 
     return () => {
-      clearInterval(pollInterval)
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      clearInterval(interval)
     }
-  }, [chatId, session])
+  }, [chatId, session, fetchMessages])
 
   const sendMessage = useCallback(async (content: string) => {
     if (!chatId || !session) {
       throw new Error('Chat ID or session is missing')
     }
+
+    const optimisticId = `temp-${Date.now()}`
+    const createdAt = new Date().toISOString()
+    const optimisticMessage: Message = attachSenderInfo({
+      id: optimisticId,
+      chat_id: chatId,
+      sender_id: session.user.id,
+      content: content.trim(),
+      message_type: 'text',
+      read_at: null,
+      created_at: createdAt,
+    } as Message)
+
+    setMessages((prev) => [...prev, optimisticMessage])
 
     try {
       const response = await fetch(`/api/chats/${chatId}/messages`, {
@@ -107,13 +208,20 @@ export function useChat(chatId: string | null) {
 
       const data = await response.json()
       
-      // Message will be added via polling
+      if (data.message) {
+        const savedMessage = attachSenderInfo(data.message)
+        setMessages((prev) =>
+          prev.map((msg) => (msg.id === optimisticId ? savedMessage : msg))
+        )
+      }
+
       return data.message
     } catch (err) {
+      setMessages((prev) => prev.filter((msg) => msg.id !== optimisticId))
       setError(err instanceof Error ? err.message : 'Failed to send message')
       throw err
     }
-  }, [chatId, session])
+  }, [chatId, session, attachSenderInfo])
 
   const markAsRead = useCallback(async (messageId: string) => {
     // TODO: Implement read receipts

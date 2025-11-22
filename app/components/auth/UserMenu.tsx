@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { User, LogOut, Settings, Briefcase, MessageCircle } from "lucide-react"
+import { User, LogOut, Settings, Briefcase, MessageCircle, Wallet } from "lucide-react"
 import { useSession, signOut } from "next-auth/react"
 import { useLocaleContext } from "@/contexts"
 import Image from "next/image"
@@ -12,6 +12,7 @@ export function UserMenu() {
   const { t } = useLocaleContext()
   const [isOpen, setIsOpen] = React.useState(false)
   const [unreadCount, setUnreadCount] = React.useState(0)
+  const [balance, setBalance] = React.useState<{ balance: number; cashback: number } | null>(null)
   const router = useRouter()
   
   const userRole = session?.user?.role || 'customer'
@@ -30,8 +31,31 @@ export function UserMenu() {
   React.useEffect(() => {
     if (session?.user) {
       fetchUnreadCount()
+      fetchBalance()
     }
   }, [session])
+
+  React.useEffect(() => {
+    if (!session?.user) return
+
+    const interval = setInterval(() => {
+      fetchBalance()
+    }, 30000) // Update balance every 30 seconds
+
+    return () => clearInterval(interval)
+  }, [session?.user?.id])
+
+  const fetchBalance = async () => {
+    try {
+      const response = await fetch('/api/balance')
+      if (response.ok) {
+        const data = await response.json()
+        setBalance(data)
+      }
+    } catch (error) {
+      console.error('[UserMenu] Error fetching balance:', error)
+    }
+  }
 
   React.useEffect(() => {
     if (!session?.user) return
@@ -133,6 +157,21 @@ export function UserMenu() {
                   </p>
                 </div>
               </div>
+              
+              {/* Wallet Info */}
+              {balance !== null && (
+                <div className="mt-3 pt-3 border-t border-gray-800">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Wallet className="h-4 w-4 text-blue-400" />
+                      <span className="text-xs text-gray-400">Wallet</span>
+                    </div>
+                    <p className="text-sm font-bold text-blue-400">
+                      ${balance.balance.toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Menu Items */}
@@ -160,6 +199,17 @@ export function UserMenu() {
                   Booster Dashboard
                 </button>
               )}
+
+              <button
+                onClick={() => {
+                  router.push("/balance")
+                  setIsOpen(false)
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:bg-zinc-800 transition-colors"
+              >
+                <Wallet className="h-4 w-4" />
+                Balance
+              </button>
 
               <button
                 onClick={() => {

@@ -114,13 +114,43 @@ export async function getOrCreateUser(userData: {
     console.log('[Supabase] Getting or creating user:', { email: userData.email, provider: userData.provider })
     
     // First, check if user exists by email
+    // Try to select balance/cashback, but handle case where columns don't exist yet
     const { data: existingUser, error: checkError } = await supabaseAdmin
       .from('users')
-      .select('*')
+      .select('id, email, name, image, provider, provider_id, role, created_at, updated_at, last_login')
       .eq('email', userData.email)
-      .single()
+      .maybeSingle()
+
+    // If maybeSingle returns null but no error, user doesn't exist
+    // If there's an error, it might be a column issue - try without balance/cashback
+    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows returned
+      console.warn('[Supabase] Error checking user (might be missing columns):', checkError.message)
+      // Try again without balance/cashback columns
+      const { data: userWithoutBalance, error: retryError } = await supabaseAdmin
+        .from('users')
+        .select('id, email, name, image, provider, provider_id, role, created_at, updated_at, last_login')
+        .eq('email', userData.email)
+        .maybeSingle()
+      
+      if (userWithoutBalance && !retryError) {
+        // Add default balance/cashback if missing
+        const userWithDefaults = {
+          ...userWithoutBalance,
+          balance: (userWithoutBalance as any).balance || 0,
+          cashback: (userWithoutBalance as any).cashback || 0,
+        }
+        console.log('[Supabase] User found (without balance columns):', userWithDefaults.id)
+        return userWithDefaults as any
+      }
+    }
 
     if (existingUser && !checkError) {
+      // Ensure balance and cashback exist
+      const userWithBalance = {
+        ...existingUser,
+        balance: (existingUser as any).balance ?? 0,
+        cashback: (existingUser as any).cashback ?? 0,
+      }
       console.log('[Supabase] User exists, updating last_login:', existingUser.id)
       // User exists, update last_login and optionally update name/image
       const { data: updatedUser, error: updateError } = await supabaseAdmin
@@ -132,7 +162,7 @@ export async function getOrCreateUser(userData: {
           provider_id: userData.providerId || existingUser.provider_id,
         })
         .eq('id', existingUser.id)
-        .select()
+        .select('id, email, name, image, provider, provider_id, balance, cashback, role, created_at, updated_at, last_login')
         .single()
 
       if (updateError) {
@@ -141,7 +171,13 @@ export async function getOrCreateUser(userData: {
       }
 
       console.log('[Supabase] User updated successfully:', updatedUser.id)
-      return updatedUser
+      // Ensure balance and cashback exist
+      const updatedWithBalance = {
+        ...updatedUser,
+        balance: (updatedUser as any).balance ?? 0,
+        cashback: (updatedUser as any).cashback ?? 0,
+      }
+      return updatedWithBalance as any
     }
 
     // User doesn't exist, create new user
@@ -167,7 +203,7 @@ export async function getOrCreateUser(userData: {
     const { data: newUser, error: createError } = await supabaseAdmin
       .from('users')
       .insert(insertData)
-      .select()
+      .select('id, email, name, image, provider, provider_id, role, created_at, updated_at, last_login')
       .single()
 
     if (createError) {
@@ -185,13 +221,19 @@ export async function getOrCreateUser(userData: {
         // Try to fetch the existing user
         const { data: existingUser } = await supabaseAdmin
           .from('users')
-          .select('*')
+          .select('id, email, name, image, provider, provider_id, balance, cashback, role, created_at, updated_at, last_login')
           .eq('email', userData.email)
           .single()
         
         if (existingUser) {
           console.log('[Supabase] Found existing user, updating:', existingUser.id)
-          return existingUser
+          // Ensure balance and cashback exist
+          const userWithBalance = {
+            ...existingUser,
+            balance: (existingUser as any).balance ?? 0,
+            cashback: (existingUser as any).cashback ?? 0,
+          }
+          return userWithBalance as any
         }
       }
       
@@ -212,7 +254,13 @@ export async function getOrCreateUser(userData: {
       email: newUser.email,
       provider: newUser.provider,
     })
-    return newUser
+    // Ensure balance and cashback exist (defaults from migration)
+    const newUserWithBalance = {
+      ...newUser,
+      balance: (newUser as any).balance ?? 0,
+      cashback: (newUser as any).cashback ?? 0,
+    }
+    return newUserWithBalance as any
   } catch (error) {
     console.error('[Supabase] Exception in getOrCreateUser:', error)
     return null

@@ -66,7 +66,7 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
     }
   }, [isLoading])
 
-  if (isLoading) {
+  if (isLoading && messages.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center py-8">
         <div className="flex flex-col items-center gap-2">

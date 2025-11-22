@@ -13,6 +13,9 @@ const stripe = new Stripe(stripeSecretKey, {
   apiVersion: '2025-10-29.clover',
 })
 
+const ORDER_SUCCESS_WEBHOOK =
+  'https://nocovag.app.n8n.cloud/webhook/website-data'
+
 export async function POST(req: NextRequest) {
   try {
     const { paymentIntentId } = await req.json()
@@ -76,16 +79,23 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Extract balance information from metadata
+    const balanceUsed = metadata.balance_used ? parseFloat(metadata.balance_used) : 0
+    const totalAmount = metadata.total_amount ? parseFloat(metadata.total_amount) : (paymentIntent.amount / 100)
+    const paymentMethod = balanceUsed > 0 ? 'mixed' : 'stripe'
+
     const orderData = {
       user_id: userId,
       booster_id: boosterId,
       payment_intent_id: paymentIntentId,
+      payment_method: paymentMethod,
+      balance_used: balanceUsed,
       game: metadata.game || 'clash-royale',
       service_category: metadata.service_category || '',
       game_account: metadata.game_account || '',
       current_level: metadata.current_level || '',
       target_level: metadata.target_level || '',
-      amount: paymentIntent.amount / 100, // Convert from cents to dollars (this is final amount after coupon)
+      amount: totalAmount, // Use total amount (including balance portion)
       currency: paymentIntent.currency,
       estimated_time: metadata.estimated_time || null,
       status: orderStatus,
@@ -104,12 +114,12 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Check if order already exists
+    // Check if order already exists (by payment_intent_id if provided)
     const { data: existingOrder } = await supabaseAdmin
       .from('orders')
       .select('id')
       .eq('payment_intent_id', paymentIntentId)
-      .single()
+      .maybeSingle()
 
     if (existingOrder) {
       console.log('[Orders API] Order already exists:', existingOrder.id)
@@ -250,6 +260,27 @@ export async function POST(req: NextRequest) {
         console.error('[Orders API] Error recording coupon usage:', error)
         // Don't fail the order creation if coupon tracking fails
       }
+    }
+
+    // Fire-and-forget webhook notification (non-blocking for order flow)
+    try {
+      await fetch(ORDER_SUCCESS_WEBHOOK, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          event: 'order_created',
+          orderId: newOrder.id,
+          paymentIntentId,
+          order: newOrder,
+          metadata,
+          timestamp: new Date().toISOString(),
+        }),
+      })
+      console.log('[Orders API] ✅ Order webhook sent successfully')
+    } catch (webhookError) {
+      console.error('[Orders API] ⚠️ Failed to send order webhook:', webhookError)
     }
 
     return NextResponse.json(

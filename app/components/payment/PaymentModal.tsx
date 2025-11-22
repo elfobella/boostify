@@ -43,6 +43,8 @@ export function PaymentModal({ isOpen, onClose, amount, onSuccess, orderData, es
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null)
   const [mounted, setMounted] = useState(false)
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod | null>(null)
+  const [userBalance, setUserBalance] = useState<number>(0)
+  const [isProcessingBalance, setIsProcessingBalance] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -60,9 +62,23 @@ export function PaymentModal({ isOpen, onClose, amount, onSuccess, orderData, es
       setAppliedCoupon(null)
       setSelectedPaymentMethod(null)
       setClientSecret(null)
+      // Fetch user balance
+      fetchBalance()
       // Don't create payment intent until payment method is selected
     }
   }, [isOpen, amount])
+
+  const fetchBalance = async () => {
+    try {
+      const response = await fetch('/api/balance')
+      if (response.ok) {
+        const data = await response.json()
+        setUserBalance(data.balance || 0)
+      }
+    } catch (error) {
+      console.error('Error fetching balance:', error)
+    }
+  }
 
   const validateCoupon = async (code: string) => {
     if (!code.trim()) {
@@ -178,10 +194,81 @@ export function PaymentModal({ isOpen, onClose, amount, onSuccess, orderData, es
     }
   }
 
-  const handlePaymentMethodSelect = (method: PaymentMethod) => {
+  const handlePaymentMethodSelect = async (method: PaymentMethod) => {
     setSelectedPaymentMethod(method)
-    // Create payment intent when method is selected
-    createPaymentIntent(finalAmount, couponCode || undefined, method)
+    
+    // If balance is selected, use balance payment endpoint
+    if (method === 'balance') {
+      await processBalancePayment()
+    } else {
+      // Create payment intent when other method is selected
+      createPaymentIntent(finalAmount, couponCode || undefined, method)
+    }
+  }
+
+  const processBalancePayment = async () => {
+    setIsProcessingBalance(true)
+    try {
+      const response = await fetch('/api/balance/use-payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: finalAmount,
+          currency: 'usd',
+          orderData: orderData,
+          estimatedTime: estimatedTime,
+          couponCode: couponCode || undefined,
+          useBalance: true,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        if (data.paidWithBalance && !data.clientSecret) {
+          // Fully paid with balance, create order directly
+          if (data.orderId) {
+            // Order already created
+            handleSuccess()
+          } else {
+            // Create order
+            const orderResponse = await fetch('/api/orders/create-balance', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                orderData: orderData,
+                estimatedTime: estimatedTime,
+                balanceUsed: data.balanceUsed,
+                totalAmount: finalAmount,
+                couponCode: couponCode || undefined,
+              }),
+            })
+
+            if (orderResponse.ok) {
+              handleSuccess()
+            } else {
+              alert('Payment successful but failed to create order. Please contact support.')
+            }
+          }
+        } else if (data.clientSecret) {
+          // Partial balance payment, use Stripe for remaining
+          setClientSecret(data.clientSecret)
+        }
+      } else {
+        alert(data.error || 'Failed to process balance payment')
+        setSelectedPaymentMethod(null)
+      }
+    } catch (error) {
+      console.error('Error processing balance payment:', error)
+      alert('Failed to process balance payment')
+      setSelectedPaymentMethod(null)
+    } finally {
+      setIsProcessingBalance(false)
+    }
   }
 
   const handleBackToPaymentMethods = () => {
@@ -252,9 +339,25 @@ export function PaymentModal({ isOpen, onClose, amount, onSuccess, orderData, es
           {/* Payment Method Selection - Always show first */}
           {!selectedPaymentMethod && (
             <div className="mb-6">
+              {userBalance > 0 && (
+                <div className="mb-4 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-400">Available Balance</p>
+                      <p className="text-lg font-bold text-blue-400">${userBalance.toFixed(2)}</p>
+                    </div>
+                    {userBalance >= finalAmount && (
+                      <span className="text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded-full">
+                        Covers full amount
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
               <PaymentMethodSelector
                 selectedMethod={selectedPaymentMethod}
                 onMethodSelect={handlePaymentMethodSelect}
+                availableMethods={userBalance > 0 ? ['card', 'apple_pay', 'google_pay', 'link', 'crypto', 'balance'] : ['card', 'apple_pay', 'google_pay', 'link', 'crypto']}
               />
             </div>
           )}
@@ -380,7 +483,12 @@ export function PaymentModal({ isOpen, onClose, amount, onSuccess, orderData, es
                 </div>
               </div>
 
-              {isLoading ? (
+              {isProcessingBalance ? (
+                <div className="text-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-blue-500 mx-auto mb-4" />
+                  <p className="text-gray-400">Processing balance payment...</p>
+                </div>
+              ) : isLoading ? (
                 <PaymentModalSkeleton />
               ) : clientSecret ? (
             <Elements 

@@ -96,6 +96,13 @@ const largeTrophyRanges: TrophyRange[] = [
 
 // Küçük aralıklar (500'lük artışlar) - Büyük aralıkların içindeki daha detaylı fiyatlandırma için
 const smallTrophyRanges: TrophyRange[] = [
+  { min: 2000, max: 2500, pricePerRange: 75.69 },
+  { min: 2500, max: 3000, pricePerRange: 93.86 },
+]
+
+// UC Medals boosting için aralıklara göre fiyatlandırma (Euro cinsinden)
+// Resimdeki verilere göre: 50-3000 arası için özel fiyatlandırma
+const ucMedalsRanges: TrophyRange[] = [
   { min: 50, max: 500, pricePerRange: 43.67 },
   { min: 500, max: 1000, pricePerRange: 48.14 },
   { min: 1000, max: 1500, pricePerRange: 47.82 },
@@ -213,6 +220,80 @@ function calculateTrophyBoostPrice(currentTrophies: number, targetTrophies: numb
   return Math.round(totalPrice * 100) / 100 // 2 decimal places
 }
 
+// UC Medals sayısına göre fiyat hesaplama
+function calculateUcMedalsPrice(currentMedals: number, targetMedals: number): number {
+  if (currentMedals >= targetMedals || currentMedals < 0) {
+    return 0
+  }
+
+  let totalPrice = 0
+  let currentPos = currentMedals
+
+  while (currentPos < targetMedals) {
+    // UC Medals aralıklarına bak
+    let activeRange = ucMedalsRanges.find(range => 
+      currentPos >= range.min && currentPos < range.max
+    )
+    
+    if (activeRange) {
+      // Aralığın içindeyiz
+      if (targetMedals <= activeRange.max) {
+        // Hedef de bu aralığın içinde
+        if (currentPos === activeRange.min && targetMedals === activeRange.max) {
+          // Tam aralık
+          totalPrice += activeRange.pricePerRange
+          currentPos = activeRange.max
+          break
+        } else {
+          // Kısmi aralık - orantılı fiyat
+          const medalsInThisRange = targetMedals - currentPos
+          const rangeSize = activeRange.max - activeRange.min
+          const ratio = medalsInThisRange / rangeSize
+          totalPrice += activeRange.pricePerRange * ratio
+          currentPos = targetMedals
+          break
+        }
+      } else {
+        // Hedef bu aralığın dışında - aralığın kalan kısmını hesapla
+        const medalsInThisRange = activeRange.max - currentPos
+        const rangeSize = activeRange.max - activeRange.min
+        const ratio = medalsInThisRange / rangeSize
+        totalPrice += activeRange.pricePerRange * ratio
+        currentPos = activeRange.max
+        // Loop devam edecek, bir sonraki aralığa geçecek
+      }
+    } else {
+      // Mevcut pozisyonda aralık yok, en yakın aralığı bul
+      const allRanges = ucMedalsRanges.sort((a, b) => a.min - b.min)
+      const nextRange = allRanges.find(range => range.min > currentPos)
+      
+      if (nextRange) {
+        // Bir sonraki aralığa kadar olan kısmı hesapla
+        const medalsUntilNextRange = Math.min(nextRange.min - currentPos, targetMedals - currentPos)
+        
+        // Bir önceki aralığı bul (eğer varsa)
+        const prevRange = allRanges.filter(r => r.max <= currentPos).pop()
+        const rangeToUse = prevRange || nextRange
+        const rangeSize = rangeToUse.max - rangeToUse.min
+        const ratio = medalsUntilNextRange / rangeSize
+        totalPrice += rangeToUse.pricePerRange * ratio
+        
+        currentPos += medalsUntilNextRange
+      } else {
+        // Son aralığın fiyatını kullan
+        const lastRange = ucMedalsRanges[ucMedalsRanges.length - 1]
+        const remainingMedals = targetMedals - currentPos
+        const rangeSize = lastRange.max - lastRange.min
+        const ratio = remainingMedals / rangeSize
+        totalPrice += lastRange.pricePerRange * ratio
+        break
+      }
+    }
+  }
+
+  return Math.round(totalPrice * 100) / 100 // 2 decimal places
+}
+
 // Arena numarasını kupa sayısına çevir
 export function arenaToTrophies(arena: number): number {
   // Clash Royale arena kupa aralıkları (yaklaşık)
@@ -261,6 +342,11 @@ export function calculatePrice(
     const currentTrophies = currentLevel > 16 ? currentLevel : arenaToTrophies(currentLevel)
     const targetTrophies = targetLevel > 16 ? targetLevel : arenaToTrophies(targetLevel)
     return calculateTrophyBoostPrice(currentTrophies, targetTrophies)
+  }
+
+  // UC Medals boosting için özel aralıklara göre fiyatlandırma
+  if (category === 'uc-medals-boosting') {
+    return calculateUcMedalsPrice(currentLevel, targetLevel)
   }
 
   let price = 0

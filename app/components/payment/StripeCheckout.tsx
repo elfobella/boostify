@@ -520,14 +520,102 @@ export function StripeCheckout({ clientSecret, onSuccess, onCancel, paymentInten
   }
 
   const handlePaymentSuccess = async (paymentIntent: any) => {
+    const piId = paymentIntent.id || paymentIntentId
     console.log('✅ Payment successful!', {
-      id: paymentIntent.id,
+      id: piId,
       amount: paymentIntent.amount,
       currency: paymentIntent.currency,
-      status: paymentIntent.status
+      status: paymentIntent.status,
+      metadata: paymentIntent.metadata,
+      hasPaymentIntentId: !!paymentIntentId,
     })
     
-    // Save order to database
+    // Always check if this is a balance deposit by calling server
+    // This is more reliable than checking metadata client-side
+    if (piId) {
+      try {
+        // Check if this payment intent is a deposit
+        const checkResponse = await fetch(`/api/balance/check-deposit?paymentIntentId=${piId}`)
+        if (checkResponse.ok) {
+          const checkData = await checkResponse.json()
+          console.log('[StripeCheckout] Deposit check result:', checkData)
+          
+          if (checkData.isDeposit) {
+            // Handle balance deposit
+            console.log('[StripeCheckout] Processing balance deposit...')
+            const depositResponse = await fetch('/api/balance/deposit-success', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                paymentIntentId: piId,
+              }),
+            })
+
+            if (depositResponse.ok) {
+              const depositData = await depositResponse.json()
+              console.log('✅ Balance deposit processed:', depositData)
+              // Redirect to balance page to show updated balance
+              window.location.href = `/balance?deposit=success`
+              onSuccess()
+              return
+            } else {
+              const errorText = await depositResponse.text()
+              console.error('❌ Failed to process deposit:', errorText)
+              try {
+                const errorData = JSON.parse(errorText)
+                alert(`Payment successful but failed to update balance: ${errorData.error || 'Unknown error'}. Please contact support.`)
+              } catch {
+                alert('Payment successful but failed to update balance. Please contact support.')
+              }
+              // Still redirect but show error
+              window.location.href = `/balance?deposit=error`
+              return
+            }
+          } else {
+            console.log('[StripeCheckout] Not a balance deposit, processing as regular order')
+          }
+        } else {
+          console.warn('[StripeCheckout] Failed to check if deposit:', await checkResponse.text())
+        }
+      } catch (error) {
+        console.error('[StripeCheckout] Error checking deposit:', error)
+        // Don't block regular order flow if check fails
+      }
+    }
+    
+    // Also check metadata as fallback
+    const metadata = paymentIntent.metadata || {}
+    if (metadata.type === 'balance_deposit') {
+      console.log('[StripeCheckout] Found deposit in metadata, processing...')
+      try {
+        const depositResponse = await fetch('/api/balance/deposit-success', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            paymentIntentId: piId,
+          }),
+        })
+
+        if (depositResponse.ok) {
+          const depositData = await depositResponse.json()
+          console.log('✅ Balance deposit processed:', depositData)
+          window.location.href = `/balance?deposit=success`
+          onSuccess()
+          return
+        } else {
+          const errorText = await depositResponse.text()
+          console.error('Failed to process deposit:', errorText)
+        }
+      } catch (error) {
+        console.error('Error processing deposit:', error)
+      }
+    }
+    
+    // Save order to database (for regular orders)
     try {
       const orderResponse = await fetch('/api/orders/create', {
         method: 'POST',

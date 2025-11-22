@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Check, CreditCard, Smartphone, Wallet, Coins, Lock } from "lucide-react"
+import { Check, CreditCard, Smartphone, Wallet, Coins, Lock, Wallet2 } from "lucide-react"
 
 export type PaymentMethod = 
   | 'card'
@@ -9,6 +9,7 @@ export type PaymentMethod =
   | 'google_pay'
   | 'link'
   | 'crypto'
+  | 'balance'
   | 'paysafe'
   | 'skrill'
 
@@ -68,6 +69,13 @@ export function PaymentMethodSelector({
       icon: <Coins className="h-5 w-5" />,
       available: availableMethods.includes('crypto'),
       comingSoon: !availableMethods.includes('crypto'),
+    },
+    {
+      id: 'balance',
+      name: 'Account Balance',
+      description: 'Use your account balance',
+      icon: <Wallet2 className="h-5 w-5" />,
+      available: availableMethods.includes('balance'),
     },
     {
       id: 'paysafe',
