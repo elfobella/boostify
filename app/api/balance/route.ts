@@ -32,9 +32,13 @@ export async function GET(req: NextRequest) {
     })
 
     if (!user) {
-      console.error('[Balance] Failed to get or create user')
+      console.error('[Balance] Failed to get or create user for email:', session.user.email)
+      console.error('[Balance] Check Supabase connection and environment variables')
       return NextResponse.json(
-        { error: 'Failed to initialize user account' },
+        { 
+          error: 'Failed to initialize user account',
+          details: 'Please check server logs for more information'
+        },
         { status: 500 }
       )
     }
