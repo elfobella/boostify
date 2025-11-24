@@ -37,9 +37,9 @@ export function useChat(chatId: string | null) {
         if (message.sender_id === session?.user?.id && session?.user) {
           sender = {
             id: session.user.id,
-            email: session.user.email,
-            name: session.user.name,
-            image: session.user.image,
+            email: session.user.email || '',
+            name: session.user.name || null,
+            image: session.user.image || null,
             role: (session.user as any)?.role ?? null,
           }
         } else {
