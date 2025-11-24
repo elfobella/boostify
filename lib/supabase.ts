@@ -110,6 +110,11 @@ export async function getOrCreateUser(userData: {
     return null
   }
 
+  if (!userData.email) {
+    console.error('[Supabase] Cannot create user: email is required')
+    return null
+  }
+
   try {
     console.log('[Supabase] Getting or creating user:', { email: userData.email, provider: userData.provider })
     
@@ -239,14 +244,14 @@ export async function getOrCreateUser(userData: {
       // Check for specific error types
       if (createError.code === '23505') { // Unique violation
         console.error('[Supabase] Email already exists (unique constraint violation)')
-        // Try to fetch the existing user
-        const { data: existingUser } = await supabaseAdmin
+        // Try to fetch the existing user (without balance/cashback columns)
+        const { data: existingUser, error: fetchError } = await supabaseAdmin
           .from('users')
-          .select('id, email, name, image, provider, provider_id, balance, cashback, role, created_at, updated_at, last_login')
+          .select('id, email, name, image, provider, provider_id, role, created_at, updated_at, last_login')
           .eq('email', userData.email)
-          .single()
+          .maybeSingle()
         
-        if (existingUser) {
+        if (existingUser && !fetchError) {
           console.log('[Supabase] Found existing user, updating:', existingUser.id)
           // Ensure balance and cashback exist
           const userWithBalance = {
@@ -255,6 +260,8 @@ export async function getOrCreateUser(userData: {
             cashback: (existingUser as any).cashback ?? 0,
           }
           return userWithBalance as any
+        } else if (fetchError) {
+          console.error('[Supabase] Error fetching existing user after unique violation:', fetchError)
         }
       }
       
