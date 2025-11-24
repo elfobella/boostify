@@ -182,7 +182,13 @@ export async function getOrCreateUser(userData: {
 
       if (updateError) {
         console.error('[Supabase] Error updating user:', updateError)
-        return existingUser
+        // Return existing user with defaults
+        const existingWithDefaults = {
+          ...existingUser,
+          balance: (existingUser as any).balance ?? 0,
+          cashback: (existingUser as any).cashback ?? 0,
+        }
+        return existingWithDefaults as any
       }
 
       console.log('[Supabase] User updated successfully:', updatedUser.id)
