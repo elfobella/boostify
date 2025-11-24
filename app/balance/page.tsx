@@ -93,8 +93,8 @@ function BalanceContent() {
         } else {
           // Filter out duplicates when appending
           setTransactions(prev => {
-            const existingIds = new Set(prev.map(tx => tx.id))
-            const uniqueNew = newTransactions.filter(tx => !existingIds.has(tx.id))
+            const existingIds = new Set(prev.map((tx: BalanceTransaction) => tx.id))
+            const uniqueNew = newTransactions.filter((tx: BalanceTransaction) => !existingIds.has(tx.id))
             return [...prev, ...uniqueNew]
           })
         }
