@@ -23,25 +23,56 @@ export async function GET(req: NextRequest) {
     }
 
     // Get or create user in Supabase
-    const user = await getOrCreateUser({
-      email: session.user.email,
-      name: session.user.name || null,
-      image: session.user.image || null,
-      provider: 'email', // Default, will be updated if OAuth
-      providerId: session.user.id || undefined,
-    })
-
-    if (!user) {
-      console.error('[Chats API] Failed to get or create user')
+    let user
+    try {
+      user = await getOrCreateUser({
+        email: session.user.email,
+        name: session.user.name || null,
+        image: session.user.image || null,
+        provider: 'email', // Default, will be updated if OAuth
+        providerId: session.user.id || undefined,
+      })
+    } catch (error: any) {
+      console.error('[Chats API] Exception in getOrCreateUser:', error)
       return NextResponse.json(
-        { error: 'Failed to initialize user account' },
+        { 
+          error: 'Failed to initialize user account',
+          details: error.message || 'Unknown error'
+        },
         { status: 500 }
       )
     }
 
-    const userData = {
-      id: user.id,
-      role: (user as any).role || 'customer',
+    let userData
+    if (!user) {
+      console.error('[Chats API] Failed to get or create user for email:', session.user.email)
+      // Try to get user directly as fallback
+      const { data: directUser } = await supabaseAdmin
+        .from('users')
+        .select('id, role')
+        .eq('email', session.user.email)
+        .maybeSingle()
+      
+      if (directUser) {
+        console.log('[Chats API] Found user via direct query:', directUser.id)
+        userData = {
+          id: directUser.id,
+          role: (directUser as any).role || 'customer',
+        }
+      } else {
+        return NextResponse.json(
+          { 
+            error: 'Failed to initialize user account',
+            details: 'User not found and could not be created'
+          },
+          { status: 500 }
+        )
+      }
+    } else {
+      userData = {
+        id: user.id,
+        role: (user as any).role || 'customer',
+      }
     }
 
     console.log('[Chats API] Fetching user chats:', userData.id)
