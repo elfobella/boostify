@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { supabaseAdmin, getOrCreateUser } from '@/lib/supabase'
 import { auth } from '@/app/api/auth/[...nextauth]/route'
 
 export async function GET(req: NextRequest) {
@@ -22,18 +22,26 @@ export async function GET(req: NextRequest) {
       )
     }
 
-    // Get user data
-    const { data: userData } = await supabaseAdmin
-      .from('users')
-      .select('id, role')
-      .eq('email', session.user.email)
-      .single()
+    // Get or create user in Supabase
+    const user = await getOrCreateUser({
+      email: session.user.email,
+      name: session.user.name || null,
+      image: session.user.image || null,
+      provider: 'email', // Default, will be updated if OAuth
+      providerId: session.user.id || undefined,
+    })
 
-    if (!userData) {
+    if (!user) {
+      console.error('[Chats API] Failed to get or create user')
       return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
+        { error: 'Failed to initialize user account' },
+        { status: 500 }
       )
+    }
+
+    const userData = {
+      id: user.id,
+      role: (user as any).role || 'customer',
     }
 
     console.log('[Chats API] Fetching user chats:', userData.id)
