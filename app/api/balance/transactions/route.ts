@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
     const offset = parseInt(searchParams.get('offset') || '0')
     const transactionType = searchParams.get('type') // Optional filter by type
 
-    // Build query
+    // Build query - handle case where table doesn't exist yet
     let query = supabaseAdmin
       .from('balance_transactions')
       .select('*')
@@ -59,7 +59,20 @@ export async function GET(req: NextRequest) {
 
     const { data: transactions, error: transactionsError } = await query
 
+    // If table doesn't exist, return empty array
     if (transactionsError) {
+      if (transactionsError.code === '42P01' || transactionsError.message?.includes('does not exist')) {
+        console.warn('[Balance Transactions] Table does not exist yet, returning empty array')
+        return NextResponse.json({
+          transactions: [],
+          pagination: {
+            total: 0,
+            limit,
+            offset,
+            hasMore: false,
+          },
+        })
+      }
       console.error('[Balance Transactions] Error:', transactionsError)
       return NextResponse.json(
         { error: 'Failed to fetch transactions' },
@@ -77,15 +90,18 @@ export async function GET(req: NextRequest) {
       countQuery = countQuery.eq('transaction_type', transactionType)
     }
 
-    const { count } = await countQuery
+    const { count, error: countError } = await countQuery
+    
+    // If count fails, use transactions length
+    const totalCount = countError ? (transactions?.length || 0) : (count || 0)
 
     return NextResponse.json({
       transactions: transactions || [],
       pagination: {
-        total: count || 0,
+        total: totalCount,
         limit,
         offset,
-        hasMore: (count || 0) > offset + limit,
+        hasMore: totalCount > offset + limit,
       },
     })
   } catch (error: any) {

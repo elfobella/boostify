@@ -115,11 +115,26 @@ export async function getOrCreateUser(userData: {
     
     // First, check if user exists by email
     // Try to select balance/cashback, but handle case where columns don't exist yet
-    const { data: existingUser, error: checkError } = await supabaseAdmin
+    let { data: existingUser, error: checkError } = await supabaseAdmin
       .from('users')
       .select('id, email, name, image, provider, provider_id, role, created_at, updated_at, last_login')
       .eq('email', userData.email)
       .maybeSingle()
+
+    // If error is about missing columns, try without balance/cashback
+    if (checkError && checkError.code !== 'PGRST116') {
+      console.warn('[Supabase] Error checking user (might be missing columns):', checkError.message)
+      const retryResult = await supabaseAdmin
+        .from('users')
+        .select('id, email, name, image, provider, provider_id, role, created_at, updated_at, last_login')
+        .eq('email', userData.email)
+        .maybeSingle()
+      
+      if (retryResult.data && !retryResult.error) {
+        existingUser = retryResult.data
+        checkError = null
+      }
+    }
 
     // If maybeSingle returns null but no error, user doesn't exist
     // If there's an error, it might be a column issue - try without balance/cashback
@@ -162,7 +177,7 @@ export async function getOrCreateUser(userData: {
           provider_id: userData.providerId || existingUser.provider_id,
         })
         .eq('id', existingUser.id)
-        .select('id, email, name, image, provider, provider_id, balance, cashback, role, created_at, updated_at, last_login')
+        .select('id, email, name, image, provider, provider_id, role, created_at, updated_at, last_login')
         .single()
 
       if (updateError) {

@@ -40,23 +40,42 @@ export async function GET(req: NextRequest) {
     }
 
     // Get user balance and cashback
+    // Try to select balance/cashback, but handle case where columns don't exist yet
     const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
       .select('balance, cashback')
       .eq('id', user.id)
-      .single()
+      .maybeSingle()
 
-    if (userError || !userData) {
-      console.error('[Balance] Error fetching balance:', userError)
-      return NextResponse.json(
-        { error: 'Failed to fetch balance' },
-        { status: 500 }
-      )
+    // If columns don't exist, return default values
+    if (userError && userError.code !== 'PGRST116') {
+      console.warn('[Balance] Error fetching balance (columns might not exist):', userError.message)
+      // Try without balance/cashback columns
+      const { data: userWithoutBalance } = await supabaseAdmin
+        .from('users')
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle()
+      
+      if (userWithoutBalance) {
+        return NextResponse.json({
+          balance: 0,
+          cashback: 0,
+        })
+      }
+    }
+
+    if (!userData) {
+      // User exists but balance columns might not exist - return defaults
+      return NextResponse.json({
+        balance: 0,
+        cashback: 0,
+      })
     }
 
     return NextResponse.json({
-      balance: parseFloat(userData.balance || '0'),
-      cashback: parseFloat(userData.cashback || '0'),
+      balance: parseFloat((userData.balance as any) || '0'),
+      cashback: parseFloat((userData.cashback as any) || '0'),
     })
   } catch (error: any) {
     console.error('[Balance] Exception:', error)
